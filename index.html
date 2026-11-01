@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alpha Womb</title>
+<meta name="theme-color" content="#FBF6F2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Alpha Womb">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --bg:#FBF6F2; --card:#FFFFFF; --ink:#2E2430; --muted:#85788A; --line:#EDE3E0;
+  --rose:#C2456B; --rose-soft:#F6DCE4; --teal:#2F8481; --teal-soft:#D5ECE9;
+  --amber:#B7791F; --amber-soft:#F7EAD2;
+  --shadow:0 1px 2px rgba(46,36,48,.06),0 4px 16px rgba(46,36,48,.05);
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#1A1519; --card:#251E24; --ink:#F3ECEF; --muted:#A898A6; --line:#3A3038;
+  --rose:#E97A9C; --rose-soft:#4A2533; --teal:#6CC3BE; --teal-soft:#1E3A39;
+  --amber:#E0B060; --amber-soft:#3E3220; --shadow:none;
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 96px)}
+h1{font:600 28px/1.15 ui-serif,"New York",Georgia,serif;margin:8px 0 16px}
+h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:24px 0 8px;font-weight:600}
+.card{background:var(--card);border-radius:18px;padding:18px;box-shadow:var(--shadow);border:1px solid var(--line);margin-bottom:12px}
+.hero{background:linear-gradient(160deg,var(--rose-soft),var(--card) 70%)}
+.hero .big{font:600 44px/1 ui-serif,"New York",Georgia,serif;margin:4px 0}
+.phase{display:inline-block;padding:4px 10px;border-radius:99px;font-size:14px;font-weight:600;background:var(--card);border:1px solid var(--line)}
+.muted{color:var(--muted)} .small{font-size:14px}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+button,.btn{font:inherit;border:0;border-radius:14px;padding:13px 16px;background:var(--rose);color:#fff;font-weight:600;width:100%;cursor:pointer;display:block;text-align:center}
+.btn2{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.btns{display:grid;gap:8px;margin-top:12px}
+.note{border-left:3px solid var(--amber);background:var(--amber-soft);padding:10px 12px;border-radius:10px;font-size:14px;margin-bottom:12px}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);
+  display:flex;justify-content:space-around;padding:6px 8px calc(env(safe-area-inset-bottom) + 6px);z-index:5}
+nav button{background:none;color:var(--muted);width:auto;padding:8px 10px;font-size:12px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button.on{color:var(--rose)}
+nav svg{width:24px;height:24px}
+/* calendar */
+.calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.calhead button{width:44px;padding:8px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.dow{font-size:12px;color:var(--muted);padding:4px 0}
+.d{aspect-ratio:1;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:15px;position:relative;cursor:pointer;border:2px solid transparent}
+.d.out{opacity:.3}
+.d.today{border-color:var(--ink)}
+.d.period{background:var(--rose);color:#fff;font-weight:600}
+.d.spot{box-shadow:inset 0 0 0 2px var(--rose)}
+.d.pred{background:var(--rose-soft);border:2px dashed var(--rose)}
+.d.fert{background:var(--teal-soft)}
+.d.ovu{background:var(--teal);color:#fff}
+.d .dot{position:absolute;bottom:3px;width:5px;height:5px;border-radius:50%;background:var(--amber)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:13px;color:var(--muted);margin-top:12px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:5px}
+/* sheet */
+.veil{position:fixed;inset:0;background:rgba(20,10,20,.4);z-index:10;display:flex;align-items:flex-end}
+.sheet{background:var(--bg);width:100%;max-width:560px;margin:0 auto;border-radius:22px 22px 0 0;padding:20px 16px calc(env(safe-area-inset-bottom) + 20px);max-height:92vh;overflow:auto}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{width:auto;background:var(--card);color:var(--ink);border:1px solid var(--line);padding:10px 14px;font-weight:500}
+.chip.on{background:var(--rose);color:#fff;border-color:var(--rose)}
+.mood .chip{flex:1;padding:10px 0;display:flex;flex-direction:column;align-items:center;font-size:12px}
+.mood .chip b{font-size:20px}
+.mood .chip.on{background:var(--amber);border-color:var(--amber)}
+textarea,input[type=text],input[type=date]{font:inherit;width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+label{display:block;font-size:14px;color:var(--muted);margin:14px 0 6px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav id="nav"></nav>
+<input type="file" id="fileClue" accept=".json,.cl,.txt,application/json" class="hide">
+<input type="file" id="fileBackup" accept=".json,application/json" class="hide">
+<script>
+"use strict";
+/* ---------- storage: everything lives in this phone's browser storage ---------- */
+const KEY = 'alphawomb.v1';
+const empty = () => ({ version: 1, days: {}, bc: [] });
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.days) return s; } catch (e) {}
+  return empty();
+}
+let S = load();
+function save() { localStorage.setItem(KEY, JSON.stringify(S)); }
+
+/* ---------- dates as whole day numbers, so clock changes never shift a day ---------- */
+const toN = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
+const toS = n => new Date(n * 864e5).toISOString().slice(0, 10);
+const todayN = () => { const d = new Date(); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5; };
+const fmt = (n, o = { weekday: 'short', day: 'numeric', month: 'short' }) =>
+  new Date(n * 864e5).toLocaleDateString('en-GB', { timeZone: 'UTC', ...o });
+const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const FLOWS = ['spotting', 'light', 'medium', 'heavy'];
+const BLEED = new Set(['light', 'medium', 'heavy']);   // spotting alone doesn't start a period
+const MOODS = ['Very low', 'Low', 'Okay', 'Good', 'Great'];
+
+/* ---------- cycle maths ---------- */
+// A period is a run of bleeding days; a gap of up to 2 days still counts as the same period.
+function periods() {
+  const ds = Object.keys(S.days).filter(k => BLEED.has(S.days[k].flow)).map(toN).sort((a, b) => a - b);
+  const out = [];
+  for (const n of ds) {
+    const p = out[out.length - 1];
+    if (p && n - p.end <= 2) p.end = n; else out.push({ start: n, end: n });
+  }
+  return out;
+}
+function stats() {
+  const ps = periods(), lens = [];
+  for (let i = 1; i < ps.length; i++) {
+    const l = ps[i].start - ps[i - 1].start;
+    if (l >= 15 && l <= 60) lens.push(l);      // ignore gaps that look like missed logging
+  }
+  const recent = lens.slice(-6);
+  const cyc = recent.length ? Math.round(avg(recent)) : 28;
+  const plens = ps.slice(-6).map(p => p.end - p.start + 1);
+  const plen = plens.length ? Math.round(avg(plens)) : 5;
+  return { ps, lens, cyc, plen, known: recent.length > 0 };
+}
+// Ovulation is estimated as 14 days before the next expected period.
+function phaseFor(cd, cyc, plen) {
+  const ov = cyc - 14;
+  if (cd <= plen) return 'Menstrual';
+  if (cd < ov - 1) return 'Follicular';
+  if (cd <= ov + 1) return 'Ovulatory';
+  if (cd <= cyc) return 'Luteal';
+  return 'Late';
+}
+function forecast() {
+  const st = stats(); const t = todayN();
+  const last = st.ps[st.ps.length - 1];
+  if (!last) return { st };
+  const cd = t - last.start + 1;
+  const next = last.start + st.cyc;
+  const ov = next - 14;
+  // future predicted periods + fertile windows, for the calendar
+  const pred = new Set(), fert = new Set(), ovu = new Set();
+  for (let k = 0; k < 6; k++) {
+    const s = next + k * st.cyc;
+    for (let i = 0; i < st.plen; i++) if (s + i > last.end) pred.add(s + i);
+    const o = s - 14;
+    if (o > last.end) { ovu.add(o); for (let i = o - 5; i <= o + 1; i++) if (i !== o && i > last.end) fert.add(i); }
+  }
+  return { st, last, cd, next, ov, phase: phaseFor(cd, st.cyc, st.plen), late: t - next, pred, fert, ovu };
+}
+const activeBC = () => S.bc.filter(b => !b.end || toN(b.end) >= todayN());
+
+/* ---------- screens ---------- */
+let tab = 'today', calMonth = null;
+const app = document.getElementById('app');
+const ICONS = {
+  today: '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  cal: '<rect x="3" y="5" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  hist: '<path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  me: '<circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+};
+function renderNav() {
+  const items = [['today', 'Today', 'today'], ['cal', 'Calendar', 'cal'], ['hist', 'History', 'hist'], ['me', 'Me', 'me']];
+  document.getElementById('nav').innerHTML = items.map(([id, label, ic]) =>
+    `<button class="${tab === id ? 'on' : ''}" onclick="go('${id}')"><svg viewBox="0 0 24 24">${ICONS[ic]}</svg>${label}</button>`).join('');
+}
+function go(t) { tab = t; render(); window.scrollTo(0, 0); }
+function render() { renderNav(); app.innerHTML = ({ today, cal, hist, me })[tab](); }
+
+const PHASE_TEXT = {
+  Menstrual: 'Your period. Oestrogen and progesterone are at their lowest.',
+  Follicular: 'After your period. Oestrogen is rising as an egg matures.',
+  Ovulatory: 'Around your estimated ovulation.',
+  Luteal: 'After ovulation. Progesterone rises, then both hormones fall before your period.',
+  Late: 'Your period is later than your average cycle.'
+};
+
+function today() {
+  const f = forecast(), t = todayN(), bcs = activeBC();
+  let h = `<h1>Alpha Womb</h1>`;
+  if (bcs.length) h += `<div class="note"><b>Birth control:</b> ${bcs.map(b => esc(b.text)).join(', ')}.<br>If this is hormonal it usually changes or stops ovulation, so the ovulation estimate may not apply.</div>`;
+  if (!f.last) {
+    h += `<div class="card hero"><div class="big">Welcome</div><p>Bring in your Clue history from the <b>Me</b> tab, or log your most recent period to get started.</p>
+      <div class="btns"><button onclick="openLog(${t})">Log today</button><button class="btn2" onclick="go('me')">Import from Clue</button></div></div>`;
+    return h;
+  }
+  const d = f.st;
+  h += `<div class="card hero">
+      <div class="muted small">${fmt(t, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+      <div class="big">Day ${f.cd}</div>
+      <span class="phase">${f.phase} phase</span>
+      <p class="small">${PHASE_TEXT[f.phase]}</p>
+      <p class="small muted">Food, seed, exercise and sleep suggestions for this phase will appear here once you’ve approved them.</p>
+    </div>`;
+  const nextTxt = f.late > 0 ? `${f.late} day${f.late > 1 ? 's' : ''} later than expected`
+    : f.late === 0 ? 'Expected today' : `In about ${-f.late} days · ${fmt(f.next)}`;
+  const ovTxt = f.ov >= t ? `Around ${fmt(f.ov)}` : 'Passed for this cycle';
+  h += `<div class="card">
+      <div class="row"><span>Next period</span><b>${nextTxt}</b></div>
+      <div class="row"><span>Ovulation (rough)</span><b>${ovTxt}</b></div>
+      <div class="row"><span>Your average cycle</span><b>${d.cyc} days${d.known ? '' : ' (default)'}</b></div>
+    </div>
+    <div class="btns"><button onclick="openLog(${t})">Log today</button></div>
+    <p class="small muted">Estimates are based on your past cycles. They are not reliable enough to use as contraception.</p>`;
+  return h;
+}
+
+function cal() {
+  const t = todayN(), f = forecast();
+  if (calMonth === null) { const d = new Date(); calMonth = [d.getFullYear(), d.getMonth()]; }
+  const [y, m] = calMonth;
+  const first = Date.UTC(y, m, 1) / 864e5;
+  const startDow = (new Date(first * 864e5).getUTCDay() + 6) % 7;   // weeks start on Monday
+  const days = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  let cells = '';
+  for (let i = -startDow; i < 42 - startDow; i++) {
+    const n = first + i, s = toS(n), e = S.days[s] || {};
+    const cls = ['d'];
+    if (i < 0 || i >= days) cls.push('out');
+    if (n === t) cls.push('today');
+    if (BLEED.has(e.flow)) cls.push('period');
+    else if (e.flow === 'spotting') cls.push('spot');
+    else if (f.pred && f.pred.has(n)) cls.push('pred');
+    else if (f.ovu && f.ovu.has(n)) cls.push('ovu');
+    else if (f.fert && f.fert.has(n)) cls.push('fert');
+    cells += `<div class="${cls.join(' ')}" onclick="openLog(${n})">${new Date(n * 864e5).getUTCDate()}${e.mood || e.note ? '<span class="dot"></span>' : ''}</div>`;
+    if (i >= days - 1 && (i + startDow + 1) % 7 === 0) break;
+  }
+  return `<h1>Calendar</h1><div class="card">
+    <div class="calhead"><button class="btn2" onclick="shiftMonth(-1)">‹</button>
+      <b>${new Date(first * 864e5).toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'long', year: 'numeric' })}</b>
+      <button class="btn2" onclick="shiftMonth(1)">›</button></div>
+    <div class="grid">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => `<div class="dow">${x}</div>`).join('')}${cells}</div>
+    <div class="legend"><span><i style="background:var(--rose)"></i>Period</span><span><i style="background:var(--rose-soft);border:1px dashed var(--rose)"></i>Expected</span>
+      <span><i style="background:var(--teal)"></i>Ovulation (rough)</span><span><i style="background:var(--teal-soft)"></i>Fertile window</span><span><i style="background:var(--amber)"></i>Mood or note</span></div>
+  </div><p class="small muted">Tap any day to log or change it.</p>`;
+}
+function shiftMonth(k) { let [y, m] = calMonth; m += k; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } calMonth = [y, m]; render(); }
+
+function hist() {
+  const st = stats();
+  if (!st.ps.length) return `<h1>History</h1><div class="card muted">No periods logged yet.</div>`;
+  let h = `<h1>History</h1><div class="card">
+    <div class="row"><span>Periods recorded</span><b>${st.ps.length}</b></div>
+    <div class="row"><span>Average cycle (last 6)</span><b>${st.known ? st.cyc + ' days' : '—'}</b></div>
+    <div class="row"><span>Average period length</span><b>${st.plen} days</b></div>
+    ${st.lens.length > 1 ? `<div class="row"><span>Shortest / longest cycle</span><b>${Math.min(...st.lens)} / ${Math.max(...st.lens)} days</b></div>` : ''}
+  </div><h2>Cycles, newest first</h2><div class="card">`;
+  for (let i = st.ps.length - 1; i >= 0; i--) {
+    const p = st.ps[i], nx = st.ps[i + 1];
+    const moods = [];
+    for (let n = p.start; n < (nx ? nx.start : todayN() + 1); n++) { const e = S.days[toS(n)]; if (e && e.mood) moods.push(e.mood); }
+    h += `<div class="row"><span>${fmt(p.start, { day: 'numeric', month: 'short', year: 'numeric' })}<br>
+      <span class="small muted">Period ${p.end - p.start + 1} days${moods.length ? ` · average mood ${avg(moods).toFixed(1)} of 5` : ''}</span></span>
+      <b>${nx ? (nx.start - p.start) + ' days' : 'Current'}</b></div>`;
+  }
+  return h + `</div><p class="small muted">Mood and symptom patterns will show here once there are a few cycles of mood entries.</p>`;
+}
+
+function me() {
+  let h = `<h1>Me</h1><h2>Birth control</h2><div class="card">`;
+  if (!S.bc.length) h += `<p class="muted small" style="margin-top:0">Nothing recorded.</p>`;
+  for (const b of S.bc.slice().sort((a, b) => b.start.localeCompare(a.start)))
+    h += `<div class="row"><span>${esc(b.text)}<br><span class="small muted">${fmt(toN(b.start), { day: 'numeric', month: 'short', year: 'numeric' })} – ${b.end ? fmt(toN(b.end), { day: 'numeric', month: 'short', year: 'numeric' }) : 'now'}</span></span>
+      <span>${b.end ? '' : `<button class="chip" onclick="endBC('${b.id}')">Stopped</button>`} <button class="chip" onclick="delBC('${b.id}')">✕</button></span></div>`;
+  h += `<label>What are you using?</label><input type="text" id="bcText" placeholder="e.g. Copper coil, Mirena, the pill (Microgynon)">
+    <label>Started</label><input type="date" id="bcStart" value="${toS(todayN())}">
+    <div class="btns"><button onclick="addBC()">Add</button></div></div>
+    <h2>Your data</h2><div class="card">
+    <p class="small" style="margin-top:0">Everything is stored only on this phone. Save a backup now and then, to Files or iCloud Drive, so you can’t lose it.</p>
+    <div class="btns">
+      <button onclick="document.getElementById('fileClue').click()">Import from Clue</button>
+      <button class="btn2" onclick="backup()">Save a backup</button>
+      <button class="btn2" onclick="document.getElementById('fileBackup').click()">Restore from a backup</button>
+    </div>
+    <p class="small muted">${Object.keys(S.days).length} days logged in total.</p></div>`;
+  return h;
+}
+
+/* ---------- birth control ---------- */
+function addBC() {
+  const text = document.getElementById('bcText').value.trim(), start = document.getElementById('bcStart').value;
+  if (!text || !start) return alert('Please fill in what you’re using and when you started.');
+  S.bc.push({ id: Date.now().toString(36), text, start, end: null }); save(); render();
+}
+function endBC(id) { const b = S.bc.find(x => x.id === id); b.end = toS(todayN()); save(); render(); }
+function delBC(id) { if (confirm('Remove this entry?')) { S.bc = S.bc.filter(x => x.id !== id); save(); render(); } }
+
+/* ---------- log sheet ---------- */
+let draft = null;
+function openLog(n) {
+  const s = toS(n);
+  draft = { s, flow: null, mood: null, note: '', ...(S.days[s] || {}) };
+  const v = document.createElement('div'); v.className = 'veil'; v.id = 'veil';
+  v.onclick = e => { if (e.target === v) closeLog(); };
+  v.innerHTML = `<div class="sheet"><h1 style="margin-top:0">${fmt(n, { weekday: 'long', day: 'numeric', month: 'long' })}</h1><div id="sheetBody"></div></div>`;
+  document.body.appendChild(v); drawSheet();
+}
+function drawSheet() {
+  document.getElementById('sheetBody').innerHTML = `
+    <label>Bleeding</label><div class="chips">
+      ${[null, ...FLOWS].map(f => `<button class="chip ${draft.flow === f ? 'on' : ''}" onclick="draft.flow=${f ? `'${f}'` : null};drawSheet()">${f ? f[0].toUpperCase() + f.slice(1) : 'None'}</button>`).join('')}
+    </div>
+    <label>How do you feel? (optional)</label><div class="chips mood">
+      ${MOODS.map((m, i) => `<button class="chip ${draft.mood === i + 1 ? 'on' : ''}" onclick="draft.mood=draft.mood===${i + 1}?null:${i + 1};drawSheet()"><b>${i + 1}</b>${m}</button>`).join('')}
+    </div>
+    ${draft.tags && draft.tags.length ? `<label>Symptoms (from Clue)</label><div class="small">${draft.tags.map(tagLabel).map(esc).join(' · ')}</div>` : ''}
+    <label>Notes (optional)</label><textarea id="noteBox" rows="3" placeholder="Symptoms, energy, anything you notice">${esc(draft.note || '')}</textarea>
+    <div class="btns"><button onclick="saveLog()">Save</button><button class="btn2" onclick="closeLog()">Cancel</button></div>`;
+  document.getElementById('noteBox').oninput = e => draft.note = e.target.value;
+}
+function saveLog() {
+  const { s, flow, mood } = draft, note = (draft.note || '').trim();
+  if (!flow && !mood && !note && !(draft.tags && draft.tags.length)) delete S.days[s];
+  else S.days[s] = { ...(S.days[s] || {}), flow, mood, note };
+  save(); closeLog(); render();
+}
+function closeLog() { const v = document.getElementById('veil'); if (v) v.remove(); }
+
+/* ---------- Clue import ----------
+   Clue's export format isn't documented, so this looks through the whole file for
+   anything with a date and a period/bleeding value, whatever shape the file is. */
+function flowWord(v) {
+  if (v && typeof v === 'object') v = v.option ?? v.value ?? v.name ?? v.type;
+  if (typeof v !== 'string') return null;
+  v = v.toLowerCase();
+  if (v.includes('spot')) return 'spotting';
+  if (v.includes('heavy')) return 'heavy';
+  if (v.includes('medium')) return 'medium';
+  if (v.includes('light')) return 'light';
+  return null;
+}
+// Clue's measurements.json is a list of {type, date, value}. Bleeding becomes flow;
+// symptoms (pain, energy, feelings, digestion, skin…) are kept as tags for pattern-finding later.
+const NOT_TAGS = new Set(['period', 'spotting', 'bbt']);
+function parseClue(text) {
+  const j = JSON.parse(text), found = {}, tags = {};
+  const rank = f => FLOWS.indexOf(f);
+  (function walk(o) {
+    if (Array.isArray(o)) return o.forEach(walk);
+    if (!o || typeof o !== 'object') return;
+    const date = String(o.day ?? o.date ?? '').slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      let f = null;
+      if ('period' in o) f = flowWord(o.period);
+      if (!f && /period|bleed|spotting/i.test(o.type || '')) f = flowWord(o.value) || (/spotting/i.test(o.type) ? 'spotting' : null);
+      if (!f && o.spotting) f = 'spotting';
+      if (f && (!found[date] || rank(f) > rank(found[date]))) found[date] = f;
+      if (o.type && !NOT_TAGS.has(o.type) && Array.isArray(o.value))
+        for (const v of o.value) if (v && v.option) (tags[date] = tags[date] || new Set()).add(`${o.type}:${v.option}`);
+      return;
+    }
+    for (const k in o) if (o[k] && typeof o[k] === 'object') walk(o[k]);
+  })(j);
+  return { found, tags };
+}
+const tagLabel = t => { const [type, opt] = t.split(':'); return `${opt.replace(/_/g, ' ')} (${type.replace(/_/g, ' ')})`; };
+document.getElementById('fileClue').onchange = async e => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  let r;
+  try { r = parseClue(await file.text()); } catch (err) { return alert('Sorry, that file couldn’t be read. If it’s a .zip, open it in the Files app first to unzip it, then choose the file inside.'); }
+  const dates = Object.keys(r.found).sort();
+  if (!dates.length) return alert('No period days were found in that file. Make sure you chose measurements.json from the Clue export.');
+  const fresh = dates.filter(d => !(S.days[d] && S.days[d].flow));
+  const tagDays = Object.keys(r.tags).length;
+  if (!confirm(`Found ${dates.length} bleeding days from ${fmt(toN(dates[0]), { day: 'numeric', month: 'short', year: 'numeric' })} to ${fmt(toN(dates[dates.length - 1]), { day: 'numeric', month: 'short', year: 'numeric' })}, and symptoms on ${tagDays} days.\n\n${fresh.length} bleeding days are new and will be added. Days you’ve already logged here won’t be changed.\n\nImport them?`)) return;
+  for (const d of fresh) S.days[d] = { ...(S.days[d] || {}), flow: r.found[d] };
+  for (const d in r.tags) {
+    const e = S.days[d] = S.days[d] || {};
+    e.tags = [...new Set([...(e.tags || []), ...r.tags[d]])];
+  }
+  save(); go('today');
+};
+
+/* ---------- backup / restore ---------- */
+async function backup() {
+  const name = `alpha-womb-backup-${toS(todayN())}.json`;
+  const file = new File([JSON.stringify(S, null, 1)], name, { type: 'application/json' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); } catch (e) {}
+    return;
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; a.click();
+}
+document.getElementById('fileBackup').onchange = async e => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  try {
+    const j = JSON.parse(await file.text());
+    if (!j.days || !j.bc) throw 0;
+    if (!confirm(`This backup has ${Object.keys(j.days).length} logged days. Restoring replaces what’s on the phone now. Continue?`)) return;
+    S = j; save(); go('today');
+  } catch (err) { alert('That doesn’t look like an Alpha Womb backup file.'); }
+};
+
+render();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
