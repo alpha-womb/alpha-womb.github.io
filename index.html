@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Alpha Womb</title>
+<title>Alpha</title>
 <meta name="theme-color" content="#FBF6F2">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Alpha Womb">
+<meta name="apple-mobile-web-app-title" content="Alpha">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.json">
 <style>
@@ -72,7 +72,14 @@ nav svg{width:24px;height:24px}
 .mood .chip.on{background:var(--amber);border-color:var(--amber)}
 /* 16px or more stops iPhone zooming in when a text box is tapped */
 textarea,input[type=text],input[type=date]{font:inherit;font-size:16px;width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+/* iPhone gives date boxes a fixed minimum width, which made them spill out of the card */
+input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;min-height:48px;text-align:left}
+input[type=date]::-webkit-date-and-time-value{text-align:left}
 label{display:block;font-size:14px;color:var(--muted);margin:14px 0 6px}
+label.check{display:flex;gap:10px;align-items:center;color:var(--ink);font-size:15px}
+label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
+.d .ring{position:absolute;top:3px;width:7px;height:7px;border-radius:50%;border:2px solid var(--teal)}
+.d .ring.out{border-style:dotted}
 .hide{display:none}
 </style>
 </head>
@@ -84,7 +91,7 @@ label{display:block;font-size:14px;color:var(--muted);margin:14px 0 6px}
 <script>
 "use strict";
 /* ---------- storage: everything lives in this phone's browser storage ---------- */
-const APP_VERSION = 3;   // shown on the Me tab; keep in step with VERSION in sw.js
+const APP_VERSION = 4;   // shown on the Me tab; keep in step with VERSION in sw.js
 const KEY = 'alphawomb.v1';
 const empty = () => ({ version: 1, days: {}, bc: [] });
 function load() {
@@ -156,7 +163,33 @@ function forecast() {
   }
   return { st, last, cd, next, ov, phase: phaseFor(cd, st.cyc, st.plen), late: t - next, pred, fert, ovu };
 }
-const activeBC = () => S.bc.filter(b => !b.end || toN(b.end) >= todayN());
+const activeBC = (n = todayN()) => S.bc.filter(b => toN(b.start) <= n && (!b.end || toN(b.end) >= n));
+
+/* ---------- ring: any birth control entry can be marked as a ring, then gets in/out dates ---------- */
+// Where the ring was on day n: { state: 'in'|'out', since } from the latest change on or before n.
+function ringState(b, n = todayN()) {
+  const past = (b.events || []).filter(e => toN(e.date) <= n).sort((x, y) => x.date.localeCompare(y.date));
+  const last = past[past.length - 1];
+  return last ? { state: last.type, since: toN(last.date) } : null;
+}
+function ringText(b) {
+  const r = ringState(b);
+  if (!r) return 'No ring changes recorded yet';
+  const days = todayN() - r.since + 1;
+  return `Ring ${r.state === 'in' ? 'in' : 'out'} since ${fmt(r.since)} · day ${days}`;
+}
+function setRing(id, date, type) {
+  const b = S.bc.find(x => x.id === id);
+  b.events = (b.events || []).filter(e => e.date !== date);
+  if (type) b.events.push({ date, type });
+}
+function ringToday(id, type) { setRing(id, toS(todayN()), type); save(); render(); }
+function ringButtons(b) {
+  const r = ringState(b);
+  const opts = !r ? ['in', 'out'] : [r.state === 'in' ? 'out' : 'in'];
+  return `<div class="chips" style="margin-top:8px">${opts.map(t =>
+    `<button class="chip" onclick="ringToday('${b.id}','${t}')">${t === 'in' ? 'Ring in today' : 'Ring out today'}</button>`).join('')}</div>`;
+}
 
 /* ---------- screens ---------- */
 let tab = 'today', calMonth = null;
@@ -185,8 +218,10 @@ const PHASE_TEXT = {
 
 function today() {
   const f = forecast(), t = todayN(), bcs = activeBC();
-  let h = `<h1>Alpha Womb</h1>`;
+  let h = `<h1>Alpha</h1>`;
   if (bcs.length) h += `<div class="note"><b>Birth control:</b> ${bcs.map(b => esc(b.text)).join(', ')}.<br>If this is hormonal it usually changes or stops ovulation, so the ovulation estimate may not apply.</div>`;
+  for (const b of bcs.filter(b => b.ring))
+    h += `<div class="card"><b>${esc(b.text)}</b><div class="small muted">${ringText(b)}</div>${ringButtons(b)}</div>`;
   if (!f.last) {
     h += `<div class="card hero"><div class="big">Welcome</div><p>Bring in your Clue history from the <b>Me</b> tab, or log your most recent period to get started.</p>
       <div class="btns"><button onclick="openLog(${t})">Log today</button><button class="btn2" onclick="go('me')">Import from Clue</button></div></div>`;
@@ -220,6 +255,8 @@ function cal() {
   const first = Date.UTC(y, m, 1) / 864e5;
   const startDow = (new Date(first * 864e5).getUTCDay() + 6) % 7;   // weeks start on Monday
   const days = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const ringDays = {};
+  for (const b of S.bc) for (const e of b.events || []) ringDays[e.date] = e.type;
   let cells = '';
   for (let i = -startDow; i < 42 - startDow; i++) {
     const n = first + i, s = toS(n), e = S.days[s] || {};
@@ -231,7 +268,7 @@ function cal() {
     else if (f.pred && f.pred.has(n)) cls.push('pred');
     else if (f.ovu && f.ovu.has(n)) cls.push('ovu');
     else if (f.fert && f.fert.has(n)) cls.push('fert');
-    cells += `<div class="${cls.join(' ')}" onclick="openLog(${n})">${new Date(n * 864e5).getUTCDate()}${e.mood || e.note ? '<span class="dot"></span>' : ''}</div>`;
+    cells += `<div class="${cls.join(' ')}" onclick="openLog(${n})">${new Date(n * 864e5).getUTCDate()}${e.mood || e.note ? '<span class="dot"></span>' : ''}${ringDays[s] ? `<span class="ring ${ringDays[s]}"></span>` : ''}</div>`;
     if (i >= days - 1 && (i + startDow + 1) % 7 === 0) break;
   }
   return `<h1>Calendar</h1><div class="card">
@@ -240,7 +277,7 @@ function cal() {
       <button class="btn2" onclick="shiftMonth(1)">›</button></div>
     <div class="grid">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => `<div class="dow">${x}</div>`).join('')}${cells}</div>
     <div class="legend"><span><i style="background:var(--rose)"></i>Period</span><span><i style="background:var(--rose-soft);border:1px dashed var(--rose)"></i>Expected</span>
-      <span><i style="background:var(--teal)"></i>Ovulation (rough)</span><span><i style="background:var(--teal-soft)"></i>Fertile window</span><span><i style="background:var(--amber)"></i>Mood or note</span></div>
+      <span><i style="background:var(--teal)"></i>Ovulation (rough)</span><span><i style="background:var(--teal-soft)"></i>Fertile window</span><span><i style="background:var(--amber)"></i>Mood or note</span>${Object.keys(ringDays).length ? `<span><i style="border:2px solid var(--teal)"></i>Ring in</span><span><i style="border:2px dotted var(--teal)"></i>Ring out</span>` : ''}</div>
   </div><p class="small muted">Tap any day to log or change it.</p>`;
 }
 function shiftMonth(k) { let [y, m] = calMonth; m += k; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } calMonth = [y, m]; render(); }
@@ -269,10 +306,12 @@ function me() {
   let h = `<h1>Me</h1><h2>Birth control</h2><div class="card">`;
   if (!S.bc.length) h += `<p class="muted small" style="margin-top:0">Nothing recorded.</p>`;
   for (const b of S.bc.slice().sort((a, b) => b.start.localeCompare(a.start)))
-    h += `<div class="row"><span>${esc(b.text)}<br><span class="small muted">${fmt(toN(b.start), { day: 'numeric', month: 'short', year: 'numeric' })} – ${b.end ? fmt(toN(b.end), { day: 'numeric', month: 'short', year: 'numeric' }) : 'now'}</span></span>
+    h += `<div class="row"><span>${esc(b.text)}<br><span class="small muted">${fmt(toN(b.start), { day: 'numeric', month: 'short', year: 'numeric' })} – ${b.end ? fmt(toN(b.end), { day: 'numeric', month: 'short', year: 'numeric' }) : 'now'}</span>
+      ${b.ring && !b.end ? `<br><span class="small">${ringText(b)}</span>${ringButtons(b)}` : ''}</span>
       <span>${b.end ? '' : `<button class="chip" onclick="endBC('${b.id}')">Stopped</button>`} <button class="chip" onclick="delBC('${b.id}')">✕</button></span></div>`;
-  h += `<label>What are you using?</label><input type="text" id="bcText" placeholder="e.g. Copper coil, Mirena, the pill (Microgynon)">
+  h += `<label>What are you using?</label><input type="text" id="bcText" placeholder="e.g. Copper coil, NuvaRing, the pill (Microgynon)">
     <label>Started</label><input type="date" id="bcStart" value="${toS(todayN())}">
+    <label class="check"><input type="checkbox" id="bcRing"> It’s a ring: track when it goes in and comes out</label>
     <div class="btns"><button onclick="addBC()">Add</button></div></div>
     <h2>Your data</h2><div class="card">
     <p class="small" style="margin-top:0">Everything is stored only on this phone. Save a backup now and then, to Files or iCloud Drive, so you can’t lose it.</p>
@@ -282,7 +321,7 @@ function me() {
       <button class="btn2" onclick="document.getElementById('fileBackup').click()">Restore from a backup</button>
     </div>
     <p class="small muted">${Object.keys(S.days).length} days logged in total.</p></div>
-    <p class="small muted" style="text-align:center">Alpha Womb · version ${APP_VERSION}</p>`;
+    <p class="small muted" style="text-align:center">Alpha · version ${APP_VERSION}</p>`;
   return h;
 }
 
@@ -290,7 +329,8 @@ function me() {
 function addBC() {
   const text = document.getElementById('bcText').value.trim(), start = document.getElementById('bcStart').value;
   if (!text || !start) return alert('Please fill in what you’re using and when you started.');
-  S.bc.push({ id: Date.now().toString(36), text, start, end: null }); save(); render();
+  const ring = document.getElementById('bcRing').checked;
+  S.bc.push({ id: Date.now().toString(36), text, start, end: null, ...(ring ? { ring: true, events: [] } : {}) }); save(); render();
 }
 function endBC(id) { const b = S.bc.find(x => x.id === id); b.end = toS(todayN()); save(); render(); }
 function delBC(id) { if (confirm('Remove this entry?')) { S.bc = S.bc.filter(x => x.id !== id); save(); render(); } }
@@ -300,6 +340,8 @@ let draft = null;
 function openLog(n) {
   const s = toS(n);
   draft = { s, flow: null, mood: null, note: '', ...(S.days[s] || {}) };
+  // rings in use on this day, and whether it went in or out that day
+  draft.rings = activeBC(n).filter(b => b.ring).map(b => ({ id: b.id, text: b.text, type: ((b.events || []).find(e => e.date === s) || {}).type || null }));
   const v = document.createElement('div'); v.className = 'veil'; v.id = 'veil';
   v.onclick = e => { if (e.target === v) closeLog(); };
   v.innerHTML = `<div class="sheet"><h1 style="margin-top:0">${fmt(n, { weekday: 'long', day: 'numeric', month: 'long' })}</h1><div id="sheetBody"></div></div>`;
@@ -313,6 +355,9 @@ function drawSheet() {
     <label>How do you feel? (optional)</label><div class="chips mood">
       ${MOODS.map((m, i) => `<button class="chip ${draft.mood === i + 1 ? 'on' : ''}" onclick="draft.mood=draft.mood===${i + 1}?null:${i + 1};drawSheet()"><b>${i + 1}</b>${m}</button>`).join('')}
     </div>
+    ${draft.rings.map((r, i) => `<label>${esc(r.text)} (ring)</label><div class="chips">
+      ${[['in', 'Put in'], ['out', 'Taken out']].map(([t, l]) => `<button class="chip ${r.type === t ? 'on' : ''}" onclick="draft.rings[${i}].type=draft.rings[${i}].type==='${t}'?null:'${t}';drawSheet()">${l}</button>`).join('')}
+    </div>`).join('')}
     ${draft.tags && draft.tags.length ? `<label>Symptoms (from Clue)</label><div class="small">${draft.tags.map(tagLabel).map(esc).join(' · ')}</div>` : ''}
     <label>Notes (optional)</label><textarea id="noteBox" rows="3" placeholder="Symptoms, energy, anything you notice">${esc(draft.note || '')}</textarea>
     <div class="btns"><button onclick="saveLog()">Save</button><button class="btn2" onclick="closeLog()">Cancel</button></div>`;
@@ -320,6 +365,7 @@ function drawSheet() {
 }
 function saveLog() {
   const { s, flow, mood } = draft, note = (draft.note || '').trim();
+  for (const r of draft.rings) setRing(r.id, s, r.type);
   if (!flow && !mood && !note && !(draft.tags && draft.tags.length)) delete S.days[s];
   else S.days[s] = { ...(S.days[s] || {}), flow, mood, note };
   save(); closeLog(); render();
@@ -384,7 +430,7 @@ document.getElementById('fileClue').onchange = async e => {
 
 /* ---------- backup / restore ---------- */
 async function backup() {
-  const name = `alpha-womb-backup-${toS(todayN())}.json`;
+  const name = `alpha-backup-${toS(todayN())}.json`;
   const file = new File([JSON.stringify(S, null, 1)], name, { type: 'application/json' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file], title: name }); } catch (e) {}
@@ -400,7 +446,7 @@ document.getElementById('fileBackup').onchange = async e => {
     if (!j.days || !j.bc) throw 0;
     if (!confirm(`This backup has ${Object.keys(j.days).length} logged days. Restoring replaces what’s on the phone now. Continue?`)) return;
     S = j; save(); go('today');
-  } catch (err) { alert('That doesn’t look like an Alpha Womb backup file.'); }
+  } catch (err) { alert('That doesn’t look like an Alpha backup file.'); }
 };
 
 /* ---------- no zooming: iPhone sometimes ignores the page setting, so block pinch and double-tap here too ---------- */

@@ -1,4 +1,4 @@
-# Alpha Womb — how it works
+# Alpha — how it works
 
 A period tracker that lives on your iPhone home screen. All your data stays on the phone.
 
@@ -23,6 +23,11 @@ None of these files contain your data. Your data is saved inside the app on the 
 In the Clue export, the file that matters is `measurements.json`. Send it to the phone (AirDrop or Files),
 then go to **Me → Import from Clue**. Bleeding days go into the calendar. Symptoms (cramps, tiredness, bloating, etc.)
 are kept on each day for spotting patterns later. Importing never overwrites days you've already logged.
+
+## Birth control and the ring
+Birth control is free text: type whatever you use. If it's a ring, tick **It's a ring** when you add it.
+The app then shows "Ring in since … · day N" on Today and Me, with a button to record it going in or out today.
+For other dates, tap the day in the calendar and choose **Put in** or **Taken out**. Those days get a small ring mark.
 
 ## Backups
 **Me → Save a backup** saves one file with everything, which you can keep in Files or iCloud Drive.
