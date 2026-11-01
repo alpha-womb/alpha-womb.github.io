@@ -25,9 +25,10 @@ then go to **Me → Import from Clue**. Bleeding days go into the calendar. Symp
 are kept on each day for spotting patterns later. Importing never overwrites days you've already logged.
 
 ## Birth control and the ring
-Birth control is free text: type whatever you use. If it's a ring, tick **It's a ring** when you add it.
-The app then shows "Ring in since … · day N" on Today and Me, with a button to record it going in or out today.
-For other dates, tap the day in the calendar and choose **Put in** or **Taken out**. Those days get a small ring mark.
+Birth control is free text: type whatever you use. If the name includes "ring", the **It's a ring** box ticks itself.
+For a ring, the Me tab has an **Add a ring date** box: choose Put in / Taken out, pick the date, tap **Add this date**.
+The choice flips after each date, so past dates can be entered quickly in order. **Ring history** lists them, each with ✕ to remove it.
+Today shows "Ring in/out since … · day N" with a one-tap button for today. Ring days get a small mark on the calendar.
 
 ## Backups
 **Me → Save a backup** saves one file with everything, which you can keep in Files or iCloud Drive.

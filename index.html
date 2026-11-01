@@ -78,6 +78,10 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 label{display:block;font-size:14px;color:var(--muted);margin:14px 0 6px}
 label.check{display:flex;gap:10px;align-items:center;color:var(--ink);font-size:15px}
 label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
+.bcitem{padding:14px 0;border-top:1px solid var(--line)}
+.bcitem:first-child{border-top:0;padding-top:0}
+.ringbox{background:var(--teal-soft);border-radius:14px;padding:14px;margin-top:10px}
+.ringbox .row{border-color:rgba(0,0,0,.08)}
 .d .ring{position:absolute;top:3px;width:7px;height:7px;border-radius:50%;border:2px solid var(--teal)}
 .d .ring.out{border-style:dotted}
 .hide{display:none}
@@ -91,7 +95,7 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 <script>
 "use strict";
 /* ---------- storage: everything lives in this phone's browser storage ---------- */
-const APP_VERSION = 4;   // shown on the Me tab; keep in step with VERSION in sw.js
+const APP_VERSION = 5;   // shown on the Me tab; keep in step with VERSION in sw.js
 const KEY = 'alphawomb.v1';
 const empty = () => ({ version: 1, days: {}, bc: [] });
 function load() {
@@ -184,6 +188,35 @@ function setRing(id, date, type) {
   if (type) b.events.push({ date, type });
 }
 function ringToday(id, type) { setRing(id, toS(todayN()), type); save(); render(); }
+
+// Me tab: add past in/out dates one after another, with the history listed below.
+// The suggested type flips after each date, so entering them in order is quick.
+const ringPick = {};
+function ringEditor(b) {
+  const ev = (b.events || []).slice().sort((x, y) => y.date.localeCompare(x.date));
+  const p = ringPick[b.id] || {};
+  const type = p.type || (ev[0] && ev[0].type === 'in' ? 'out' : 'in');
+  return `<div class="ringbox">
+    <b class="small">${ringText(b)}</b>
+    <label>Add a ring date</label>
+    <div class="chips">${[['in', 'Put in'], ['out', 'Taken out']].map(([t, l]) =>
+      `<button class="chip ${type === t ? 'on' : ''}" onclick="pickRing('${b.id}','${t}')">${l}</button>`).join('')}</div>
+    <input type="date" id="rd-${b.id}" value="${p.date || toS(todayN())}" style="margin-top:8px">
+    <div class="btns"><button onclick="addRingDate('${b.id}','${type}')">Add this date</button></div>
+    ${ev.length ? `<label>Ring history</label>${ev.map(e => `<div class="row small"><span>${e.type === 'in' ? 'Put in' : 'Taken out'}</span>
+      <span style="display:flex;gap:8px;align-items:center">${fmt(toN(e.date), { day: 'numeric', month: 'short', year: 'numeric' })}<button class="chip" style="padding:4px 10px" onclick="delRingDate('${b.id}','${e.date}')">✕</button></span></div>`).join('')}` : ''}
+  </div>`;
+}
+function pickRing(id, type) { ringPick[id] = { type, date: document.getElementById('rd-' + id).value }; render(); }
+function addRingDate(id, type) {
+  const date = document.getElementById('rd-' + id).value;
+  if (!date) return;
+  const b = S.bc.find(x => x.id === id);
+  if (date < b.start) b.start = date;   // a ring date before the start date moves the start back
+  setRing(id, date, type); delete ringPick[id]; save(); render();
+}
+function delRingDate(id, date) { setRing(id, date, null); save(); render(); }
+function trackRing(id) { const b = S.bc.find(x => x.id === id); b.ring = true; b.events = b.events || []; save(); render(); }
 function ringButtons(b) {
   const r = ringState(b);
   const opts = !r ? ['in', 'out'] : [r.state === 'in' ? 'out' : 'in'];
@@ -221,7 +254,8 @@ function today() {
   let h = `<h1>Alpha</h1>`;
   if (bcs.length) h += `<div class="note"><b>Birth control:</b> ${bcs.map(b => esc(b.text)).join(', ')}.<br>If this is hormonal it usually changes or stops ovulation, so the ovulation estimate may not apply.</div>`;
   for (const b of bcs.filter(b => b.ring))
-    h += `<div class="card"><b>${esc(b.text)}</b><div class="small muted">${ringText(b)}</div>${ringButtons(b)}</div>`;
+    h += `<div class="card"><b>${esc(b.text)}</b><div class="small muted">${ringText(b)}</div>${ringButtons(b)}
+      <div class="small" style="margin-top:8px"><a href="#" onclick="go('me');return false" style="color:var(--rose)">Add or change past ring dates</a></div></div>`;
   if (!f.last) {
     h += `<div class="card hero"><div class="big">Welcome</div><p>Bring in your Clue history from the <b>Me</b> tab, or log your most recent period to get started.</p>
       <div class="btns"><button onclick="openLog(${t})">Log today</button><button class="btn2" onclick="go('me')">Import from Clue</button></div></div>`;
@@ -306,10 +340,11 @@ function me() {
   let h = `<h1>Me</h1><h2>Birth control</h2><div class="card">`;
   if (!S.bc.length) h += `<p class="muted small" style="margin-top:0">Nothing recorded.</p>`;
   for (const b of S.bc.slice().sort((a, b) => b.start.localeCompare(a.start)))
-    h += `<div class="row"><span>${esc(b.text)}<br><span class="small muted">${fmt(toN(b.start), { day: 'numeric', month: 'short', year: 'numeric' })} – ${b.end ? fmt(toN(b.end), { day: 'numeric', month: 'short', year: 'numeric' }) : 'now'}</span>
-      ${b.ring && !b.end ? `<br><span class="small">${ringText(b)}</span>${ringButtons(b)}` : ''}</span>
-      <span>${b.end ? '' : `<button class="chip" onclick="endBC('${b.id}')">Stopped</button>`} <button class="chip" onclick="delBC('${b.id}')">✕</button></span></div>`;
-  h += `<label>What are you using?</label><input type="text" id="bcText" placeholder="e.g. Copper coil, NuvaRing, the pill (Microgynon)">
+    h += `<div class="bcitem"><div class="row" style="border:0;padding:0"><span>${esc(b.text)}<br><span class="small muted">${fmt(toN(b.start), { day: 'numeric', month: 'short', year: 'numeric' })} – ${b.end ? fmt(toN(b.end), { day: 'numeric', month: 'short', year: 'numeric' }) : 'now'}</span></span>
+      <span class="chips" style="flex-wrap:nowrap">${b.end ? '' : `<button class="chip" onclick="endBC('${b.id}')">Stopped</button>`}<button class="chip" onclick="delBC('${b.id}')">✕</button></span></div>
+      ${b.ring ? ringEditor(b) : /ring/i.test(b.text) ? `<button class="chip" style="margin-top:8px" onclick="trackRing('${b.id}')">Track ring dates</button>` : ''}</div>`;
+  h += `${S.bc.length ? `<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:6px"><b class="small">Add other birth control</b></div>` : ''}
+    <label>What are you using?</label><input type="text" id="bcText" oninput="if(/ring/i.test(this.value))document.getElementById('bcRing').checked=true" placeholder="e.g. Copper coil, NuvaRing, the pill (Microgynon)">
     <label>Started</label><input type="date" id="bcStart" value="${toS(todayN())}">
     <label class="check"><input type="checkbox" id="bcRing"> It’s a ring: track when it goes in and comes out</label>
     <div class="btns"><button onclick="addBC()">Add</button></div></div>
