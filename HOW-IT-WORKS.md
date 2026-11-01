@@ -28,6 +28,12 @@ are kept on each day for spotting patterns later. Importing never overwrites day
 **Me → Save a backup** saves one file with everything, which you can keep in Files or iCloud Drive.
 **Restore from a backup** puts it back (for example on a new phone).
 
+## Where it lives
+The app is installed from **https://alpha-womb.github.io** (GitHub account `alpha-womb`,
+project `alpha-womb.github.io`). Only the app files are there, never your data.
+To update it: change the files here, change `VERSION` in `sw.js`, then save and upload with git.
+The phone picks up the new version the next time it opens the app with internet.
+
 ## Still to come
 - Advice for each phase (food, seeds, exercise, sleep), researched and approved by you first.
 - Mood and symptom patterns, once there are a few cycles of entries.
