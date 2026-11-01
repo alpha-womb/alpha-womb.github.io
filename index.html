@@ -84,6 +84,7 @@ label{display:block;font-size:14px;color:var(--muted);margin:14px 0 6px}
 <script>
 "use strict";
 /* ---------- storage: everything lives in this phone's browser storage ---------- */
+const APP_VERSION = 3;   // shown on the Me tab; keep in step with VERSION in sw.js
 const KEY = 'alphawomb.v1';
 const empty = () => ({ version: 1, days: {}, bc: [] });
 function load() {
@@ -280,7 +281,8 @@ function me() {
       <button class="btn2" onclick="backup()">Save a backup</button>
       <button class="btn2" onclick="document.getElementById('fileBackup').click()">Restore from a backup</button>
     </div>
-    <p class="small muted">${Object.keys(S.days).length} days logged in total.</p></div>`;
+    <p class="small muted">${Object.keys(S.days).length} days logged in total.</p></div>
+    <p class="small muted" style="text-align:center">Alpha Womb · version ${APP_VERSION}</p>`;
   return h;
 }
 
@@ -400,6 +402,15 @@ document.getElementById('fileBackup').onchange = async e => {
     S = j; save(); go('today');
   } catch (err) { alert('That doesn’t look like an Alpha Womb backup file.'); }
 };
+
+/* ---------- no zooming: iPhone sometimes ignores the page setting, so block pinch and double-tap here too ---------- */
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, e => e.preventDefault());
+let lastTouch = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - lastTouch < 350 && !e.target.closest('textarea,input')) e.preventDefault();
+  lastTouch = now;
+}, { passive: false });
 
 render();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js');
