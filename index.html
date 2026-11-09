@@ -89,8 +89,8 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 .bcitem:first-child{border-top:0;padding-top:0}
 .ringbox{background:var(--teal-soft);border-radius:14px;padding:14px;margin-top:10px}
 .ringbox .row{border-color:rgba(0,0,0,.08)}
-.d .ring{position:absolute;top:3px;width:7px;height:7px;border-radius:50%;border:2px solid var(--teal)}
-.d .ring.out{border-style:dotted}
+.d .ring{position:absolute;top:1px;width:10px;height:10px;border-radius:50%;border:2.5px solid var(--teal);box-sizing:border-box}
+.d .ring.out{border-style:dashed;border-width:2px}
 .hide{display:none}
 </style>
 </head>
@@ -102,7 +102,7 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 <script>
 "use strict";
 /* ---------- storage: everything lives in this phone's browser storage ---------- */
-const APP_VERSION = 7;   // shown on the Me tab; keep in step with VERSION in sw.js
+const APP_VERSION = 8;   // shown on the Me tab; keep in step with VERSION in sw.js
 const KEY = 'alphawomb.v1';
 const empty = () => ({ version: 1, days: {}, bc: [] });
 function load() {
@@ -224,7 +224,14 @@ function addRingDate(id, type) {
   setRing(id, date, type); delete ringPick[id]; save(); render();
 }
 function delRingDate(id, date) { setRing(id, date, null); save(); render(); }
-function trackRing(id) { const b = S.bc.find(x => x.id === id); b.ring = true; b.events = b.events || []; save(); render(); }
+// An entry counts as a ring if its name includes "ring" (or it was ticked as one in an older version).
+const isRing = b => b.ring || /ring/i.test(b.text);
+// Calendar: { 'YYYY-MM-DD': 'in'|'out' } for every ring change.
+function ringDays() {
+  const m = {};
+  for (const b of S.bc) if (isRing(b)) for (const e of b.events || []) m[e.date] = e.type;
+  return m;
+}
 function ringButtons(b) {
   const r = ringState(b);
   const opts = !r ? ['in', 'out'] : [r.state === 'in' ? 'out' : 'in'];
@@ -252,8 +259,8 @@ function render() { renderNav(); app.innerHTML = ({ today, cal, bc, me })[tab]()
 /* ---------- advice: Riyo's approved wording from the advice doc (9 Nov 2026), word for word ----------
    https://claude.ai/artifact/MUsx7TLLQmVBMitSiPkKEv — change it there first, then here. */
 const FOLLICULAR_LIKE = {
-  food: ['A balanced vegetarian diet with protein at each meal (eggs, dairy, tofu, tempeh, pulses). Claims that particular foods “support oestrogen” in this phase haven’t been tested.'],
-  exercise: ['A good time for harder workouts or strength training if you feel up to it. A large 2020 review found performance differences between phases were trivial, and recommended going by your own response.'],
+  food: ['A balanced vegetarian diet with protein at each meal (eggs, dairy, tofu, tempeh, pulses).'],
+  exercise: ['Harder workouts or strength training, but go by your own response.'],
   sleep: ['Sleep tends to be most settled in this phase. Keep regular sleep and wake times.']
 };
 const LUTEAL = {
@@ -273,9 +280,7 @@ const ADVICE = {
   Follicular: { hormones: ['Oestrogen is rising: you may feel more energetic.'], ...FOLLICULAR_LIKE },
   Ovulatory: {
     hormones: ['Oestrogen peaks and a surge of luteinising hormone (LH) releases an egg.', 'You may notice one-sided twinges or higher sex drive.'],
-    food: ['A balanced vegetarian diet with protein at each meal (eggs, dairy, tofu, tempeh, pulses).'],
-    exercise: ['Harder workouts or strength training, but go by your own response.'],
-    sleep: FOLLICULAR_LIKE.sleep
+    ...FOLLICULAR_LIKE
   },
   Luteal: LUTEAL,
   Late: { ...LUTEAL, hormones: ['Your period is later than your average cycle.'] }
@@ -319,7 +324,7 @@ function today() {
 }
 
 function cal() {
-  const t = todayN(), f = forecast();
+  const t = todayN(), f = forecast(), rd = ringDays();
   if (calMonth === null) { const d = new Date(); calMonth = [d.getFullYear(), d.getMonth()]; }
   const [y, m] = calMonth;
   const first = Date.UTC(y, m, 1) / 864e5;
@@ -336,7 +341,7 @@ function cal() {
     else if (f.pred && f.pred.has(n)) cls.push('pred');
     else if (f.ovu && f.ovu.has(n)) cls.push('ovu');
     else if (f.fert && f.fert.has(n)) cls.push('fert');
-    cells += `<div class="${cls.join(' ')}" onclick="openLog(${n})">${new Date(n * 864e5).getUTCDate()}${e.mood || e.note ? '<span class="dot"></span>' : ''}</div>`;
+    cells += `<div class="${cls.join(' ')}" onclick="openLog(${n})">${new Date(n * 864e5).getUTCDate()}${e.mood || e.note ? '<span class="dot"></span>' : ''}${rd[s] ? `<span class="ring ${rd[s]}"></span>` : ''}</div>`;
     if (i >= days - 1 && (i + startDow + 1) % 7 === 0) break;
   }
   return `<h1>Calendar</h1><div class="card">
@@ -345,7 +350,7 @@ function cal() {
       <button class="btn2" onclick="shiftMonth(1)">›</button></div>
     <div class="grid">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => `<div class="dow">${x}</div>`).join('')}${cells}</div>
     <div class="legend"><span><i style="background:var(--rose)"></i>Period</span><span><i style="background:var(--rose-soft);border:1px dashed var(--rose)"></i>Expected</span>
-      <span><i style="background:var(--teal)"></i>Ovulation (rough)</span><span><i style="background:var(--teal-soft)"></i>Fertile window</span><span><i style="background:var(--amber)"></i>Mood or note</span></div>
+      <span><i style="background:var(--teal)"></i>Ovulation (rough)</span><span><i style="background:var(--teal-soft)"></i>Fertile window</span><span><i style="background:var(--amber)"></i>Mood or note</span>${Object.keys(rd).length ? `<span><i style="border:2.5px solid var(--teal);box-sizing:border-box"></i>Ring in</span><span><i style="border:2px dashed var(--teal);box-sizing:border-box"></i>Ring out</span>` : ''}</div>
     <p class="small muted" style="margin-bottom:0">Tap any day to log or change it.</p>
   </div>${history()}`;
 }
@@ -380,11 +385,11 @@ function bc() {
   for (const b of S.bc.slice().sort((a, b) => b.start.localeCompare(a.start)))
     h += `<div class="bcitem"><div class="row" style="border:0;padding:0"><span>${esc(b.text)}<br><span class="small muted">${fmt(toN(b.start), { day: 'numeric', month: 'short', year: 'numeric' })} – ${b.end ? fmt(toN(b.end), { day: 'numeric', month: 'short', year: 'numeric' }) : 'now'}</span></span>
       <span class="chips" style="flex-wrap:nowrap">${b.end ? '' : `<button class="chip" onclick="endBC('${b.id}')">Stopped</button>`}<button class="chip" onclick="delBC('${b.id}')">✕</button></span></div>
-      ${b.ring ? ringEditor(b) : /ring/i.test(b.text) ? `<button class="chip" style="margin-top:8px" onclick="trackRing('${b.id}')">Track ring dates</button>` : ''}</div>`;
+      ${isRing(b) ? ringEditor(b) : ''}</div>`;
   h += `${S.bc.length ? `<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:6px"><b class="small">Add other birth control</b></div>` : ''}
-    <label>What are you using?</label><input type="text" id="bcText" oninput="if(/ring/i.test(this.value))document.getElementById('bcRing').checked=true" placeholder="e.g. Copper coil, NuvaRing, the pill (Microgynon)">
+    <label>What are you using?</label><input type="text" id="bcText" placeholder="e.g. Copper coil, NuvaRing, the pill (Microgynon)">
     <label>Started</label><input type="date" id="bcStart" value="${toS(todayN())}">
-    <label class="check"><input type="checkbox" id="bcRing"> It’s a ring: track when it goes in and comes out</label>
+    <p class="small muted">If the name includes “ring”, you’ll get a box to record when it goes in and comes out.</p>
     <div class="btns"><button onclick="addBC()">Add</button></div></div>`;
   return h;
 }
@@ -406,8 +411,7 @@ function me() {
 function addBC() {
   const text = document.getElementById('bcText').value.trim(), start = document.getElementById('bcStart').value;
   if (!text || !start) return alert('Please fill in what you’re using and when you started.');
-  const ring = document.getElementById('bcRing').checked;
-  S.bc.push({ id: Date.now().toString(36), text, start, end: null, ...(ring ? { ring: true, events: [] } : {}) }); save(); render();
+  S.bc.push({ id: Date.now().toString(36), text, start, end: null, events: [] }); save(); render();
 }
 function endBC(id) { const b = S.bc.find(x => x.id === id); b.end = toS(todayN()); save(); render(); }
 function delBC(id) { if (confirm('Remove this entry?')) { S.bc = S.bc.filter(x => x.id !== id); save(); render(); } }

@@ -25,8 +25,9 @@ then go to **Me → Import from Clue**. Bleeding days go into the calendar. Symp
 are kept on each day for spotting patterns later. Importing never overwrites days you've already logged.
 
 ## Birth control and the ring
-Birth control is free text: type whatever you use. If the name includes "ring", the **It's a ring** box ticks itself.
-Everything about birth control is on the **Birth control** tab (nothing on Today, Me, the calendar or the day log).
+Birth control is free text: type whatever you use. If the name includes "ring", the entry gets a ring box (no tick box needed).
+Everything about birth control is on the **Birth control** tab (nothing on Today, Me or the day log). The one exception, by request:
+the calendar shows a small circle on days the ring went in (solid) or came out (dashed).
 For a ring, that tab has a one-tap **Ring in/out today** button and an **Or add an earlier date** box: choose Put in / Taken out, pick the date, tap **Add this date**.
 The choice flips after each date, so past dates can be entered quickly in order. **Ring history** lists them, each with ✕ to remove it.
 
