@@ -90,7 +90,8 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 .ringbox{background:var(--teal-soft);border-radius:14px;padding:14px;margin-top:10px}
 .ringbox .row{border-color:rgba(0,0,0,.08)}
 .d .ring{position:absolute;top:1px;width:10px;height:10px;border-radius:50%;border:2.5px solid var(--teal);box-sizing:border-box}
-.d .ring.out{border-style:dashed;border-width:2px}
+.d .ring.out{border-color:var(--rose)}
+.d.period .ring.out{border-color:#fff}   /* pink would vanish on a pink period day */
 .hide{display:none}
 </style>
 </head>
@@ -102,7 +103,7 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 <script>
 "use strict";
 /* ---------- storage: everything lives in this phone's browser storage ---------- */
-const APP_VERSION = 8;   // shown on the Me tab; keep in step with VERSION in sw.js
+const APP_VERSION = 9;   // shown on the Me tab; keep in step with VERSION in sw.js
 const KEY = 'alphawomb.v1';
 const empty = () => ({ version: 1, days: {}, bc: [] });
 function load() {
@@ -350,7 +351,7 @@ function cal() {
       <button class="btn2" onclick="shiftMonth(1)">›</button></div>
     <div class="grid">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => `<div class="dow">${x}</div>`).join('')}${cells}</div>
     <div class="legend"><span><i style="background:var(--rose)"></i>Period</span><span><i style="background:var(--rose-soft);border:1px dashed var(--rose)"></i>Expected</span>
-      <span><i style="background:var(--teal)"></i>Ovulation (rough)</span><span><i style="background:var(--teal-soft)"></i>Fertile window</span><span><i style="background:var(--amber)"></i>Mood or note</span>${Object.keys(rd).length ? `<span><i style="border:2.5px solid var(--teal);box-sizing:border-box"></i>Ring in</span><span><i style="border:2px dashed var(--teal);box-sizing:border-box"></i>Ring out</span>` : ''}</div>
+      <span><i style="background:var(--teal)"></i>Ovulation (rough)</span><span><i style="background:var(--teal-soft)"></i>Fertile window</span><span><i style="background:var(--amber)"></i>Mood or note</span>${Object.keys(rd).length ? `<span><i style="border:2.5px solid var(--teal);box-sizing:border-box"></i>Ring in</span><span><i style="border:2.5px solid var(--rose);box-sizing:border-box"></i>Ring out</span>` : ''}</div>
     <p class="small muted" style="margin-bottom:0">Tap any day to log or change it.</p>
   </div>${history()}`;
 }

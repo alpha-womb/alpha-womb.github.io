@@ -27,7 +27,7 @@ are kept on each day for spotting patterns later. Importing never overwrites day
 ## Birth control and the ring
 Birth control is free text: type whatever you use. If the name includes "ring", the entry gets a ring box (no tick box needed).
 Everything about birth control is on the **Birth control** tab (nothing on Today, Me or the day log). The one exception, by request:
-the calendar shows a small circle on days the ring went in (solid) or came out (dashed).
+the calendar shows a small circle on days the ring went in (blue-green circle) or came out (pink circle, white on period days).
 For a ring, that tab has a one-tap **Ring in/out today** button and an **Or add an earlier date** box: choose Put in / Taken out, pick the date, tap **Add this date**.
 The choice flips after each date, so past dates can be entered quickly in order. **Ring history** lists them, each with ✕ to remove it.
 
