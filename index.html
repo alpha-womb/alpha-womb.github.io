@@ -81,6 +81,10 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 .abox{background:var(--card);border:1px solid var(--line);border-left:4px solid;border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow)}
 .alabel{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
 .abox p{margin:4px 0;font-size:15px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin-bottom:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;box-shadow:var(--shadow)}
+.tile b{display:block;font-size:18px}
+.tile span{font-size:12px;color:var(--muted)}
 .bcitem{padding:14px 0;border-top:1px solid var(--line)}
 .bcitem:first-child{border-top:0;padding-top:0}
 .ringbox{background:var(--teal-soft);border-radius:14px;padding:14px;margin-top:10px}
@@ -98,7 +102,7 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 <script>
 "use strict";
 /* ---------- storage: everything lives in this phone's browser storage ---------- */
-const APP_VERSION = 6;   // shown on the Me tab; keep in step with VERSION in sw.js
+const APP_VERSION = 7;   // shown on the Me tab; keep in step with VERSION in sw.js
 const KEY = 'alphawomb.v1';
 const empty = () => ({ version: 1, days: {}, bc: [] });
 function load() {
@@ -201,7 +205,8 @@ function ringEditor(b) {
   const type = p.type || (ev[0] && ev[0].type === 'in' ? 'out' : 'in');
   return `<div class="ringbox">
     <b class="small">${ringText(b)}</b>
-    <label>Add a ring date</label>
+    ${b.end ? '' : ringButtons(b)}
+    <label>Or add an earlier date</label>
     <div class="chips">${[['in', 'Put in'], ['out', 'Taken out']].map(([t, l]) =>
       `<button class="chip ${type === t ? 'on' : ''}" onclick="pickRing('${b.id}','${t}')">${l}</button>`).join('')}</div>
     <input type="date" id="rd-${b.id}" value="${p.date || toS(todayN())}" style="margin-top:8px">
@@ -233,16 +238,16 @@ const app = document.getElementById('app');
 const ICONS = {
   today: '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
   cal: '<rect x="3" y="5" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
-  hist: '<path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  bc: '<rect x="3" y="8" width="18" height="8" rx="4" transform="rotate(-45 12 12)" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.2 9.2l5.6 5.6" stroke="currentColor" stroke-width="2"/>',
   me: '<circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
 };
 function renderNav() {
-  const items = [['today', 'Today', 'today'], ['cal', 'Calendar', 'cal'], ['hist', 'History', 'hist'], ['me', 'Me', 'me']];
+  const items = [['today', 'Today', 'today'], ['cal', 'Calendar', 'cal'], ['bc', 'Birth control', 'bc'], ['me', 'Me', 'me']];
   document.getElementById('nav').innerHTML = items.map(([id, label, ic]) =>
     `<button class="${tab === id ? 'on' : ''}" onclick="go('${id}')"><svg viewBox="0 0 24 24">${ICONS[ic]}</svg>${label}</button>`).join('');
 }
 function go(t) { tab = t; render(); window.scrollTo(0, 0); }
-function render() { renderNav(); app.innerHTML = ({ today, cal, hist, me })[tab](); }
+function render() { renderNav(); app.innerHTML = ({ today, cal, bc, me })[tab](); }
 
 /* ---------- advice: Riyo's approved wording from the advice doc (9 Nov 2026), word for word ----------
    https://claude.ai/artifact/MUsx7TLLQmVBMitSiPkKEv — change it there first, then here. */
@@ -266,7 +271,12 @@ const ADVICE = {
     sleep: ['Cramps can disturb sleep. Treating the pain (heat, ginger, painkillers) helps more than any phase-specific sleep rule.']
   },
   Follicular: { hormones: ['Oestrogen is rising: you may feel more energetic.'], ...FOLLICULAR_LIKE },
-  Ovulatory: { hormones: ['Oestrogen peaks and a surge of luteinising hormone (LH) releases an egg.', 'You may notice one-sided twinges or higher sex drive.'], ...FOLLICULAR_LIKE },
+  Ovulatory: {
+    hormones: ['Oestrogen peaks and a surge of luteinising hormone (LH) releases an egg.', 'You may notice one-sided twinges or higher sex drive.'],
+    food: ['A balanced vegetarian diet with protein at each meal (eggs, dairy, tofu, tempeh, pulses).'],
+    exercise: ['Harder workouts or strength training, but go by your own response.'],
+    sleep: FOLLICULAR_LIKE.sleep
+  },
   Luteal: LUTEAL,
   Late: { ...LUTEAL, hormones: ['Your period is later than your average cycle.'] }
 };
@@ -281,12 +291,8 @@ function adviceBoxes(phase) {
 }
 
 function today() {
-  const f = forecast(), t = todayN(), bcs = activeBC();
+  const f = forecast(), t = todayN();
   let h = `<h1>Alpha</h1>`;
-  if (bcs.length) h += `<div class="note"><b>Birth control:</b> ${bcs.map(b => esc(b.text)).join(', ')}.<br>If this is hormonal it usually changes or stops ovulation, so the ovulation estimate may not apply.</div>`;
-  for (const b of bcs.filter(b => b.ring))
-    h += `<div class="card"><b>${esc(b.text)}</b><div class="small muted">${ringText(b)}</div>${ringButtons(b)}
-      <div class="small" style="margin-top:8px"><a href="#" onclick="go('me');return false" style="color:var(--rose)">Add or change past ring dates</a></div></div>`;
   if (!f.last) {
     h += `<div class="card hero"><div class="big">Welcome</div><p>Bring in your Clue history from the <b>Me</b> tab, or log your most recent period to get started.</p>
       <div class="btns"><button onclick="openLog(${t})">Log today</button><button class="btn2" onclick="go('me')">Import from Clue</button></div></div>`;
@@ -319,8 +325,6 @@ function cal() {
   const first = Date.UTC(y, m, 1) / 864e5;
   const startDow = (new Date(first * 864e5).getUTCDay() + 6) % 7;   // weeks start on Monday
   const days = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-  const ringDays = {};
-  for (const b of S.bc) for (const e of b.events || []) ringDays[e.date] = e.type;
   let cells = '';
   for (let i = -startDow; i < 42 - startDow; i++) {
     const n = first + i, s = toS(n), e = S.days[s] || {};
@@ -332,7 +336,7 @@ function cal() {
     else if (f.pred && f.pred.has(n)) cls.push('pred');
     else if (f.ovu && f.ovu.has(n)) cls.push('ovu');
     else if (f.fert && f.fert.has(n)) cls.push('fert');
-    cells += `<div class="${cls.join(' ')}" onclick="openLog(${n})">${new Date(n * 864e5).getUTCDate()}${e.mood || e.note ? '<span class="dot"></span>' : ''}${ringDays[s] ? `<span class="ring ${ringDays[s]}"></span>` : ''}</div>`;
+    cells += `<div class="${cls.join(' ')}" onclick="openLog(${n})">${new Date(n * 864e5).getUTCDate()}${e.mood || e.note ? '<span class="dot"></span>' : ''}</div>`;
     if (i >= days - 1 && (i + startDow + 1) % 7 === 0) break;
   }
   return `<h1>Calendar</h1><div class="card">
@@ -341,20 +345,21 @@ function cal() {
       <button class="btn2" onclick="shiftMonth(1)">›</button></div>
     <div class="grid">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => `<div class="dow">${x}</div>`).join('')}${cells}</div>
     <div class="legend"><span><i style="background:var(--rose)"></i>Period</span><span><i style="background:var(--rose-soft);border:1px dashed var(--rose)"></i>Expected</span>
-      <span><i style="background:var(--teal)"></i>Ovulation (rough)</span><span><i style="background:var(--teal-soft)"></i>Fertile window</span><span><i style="background:var(--amber)"></i>Mood or note</span>${Object.keys(ringDays).length ? `<span><i style="border:2px solid var(--teal)"></i>Ring in</span><span><i style="border:2px dotted var(--teal)"></i>Ring out</span>` : ''}</div>
-  </div><p class="small muted">Tap any day to log or change it.</p>`;
+      <span><i style="background:var(--teal)"></i>Ovulation (rough)</span><span><i style="background:var(--teal-soft)"></i>Fertile window</span><span><i style="background:var(--amber)"></i>Mood or note</span></div>
+    <p class="small muted" style="margin-bottom:0">Tap any day to log or change it.</p>
+  </div>${history()}`;
 }
 function shiftMonth(k) { let [y, m] = calMonth; m += k; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } calMonth = [y, m]; render(); }
 
-function hist() {
+// Shown under the calendar: a row of averages, then every cycle newest first.
+function history() {
   const st = stats();
-  if (!st.ps.length) return `<h1>History</h1><div class="card muted">No periods logged yet.</div>`;
-  let h = `<h1>History</h1><div class="card">
-    <div class="row"><span>Periods recorded</span><b>${st.ps.length}</b></div>
-    <div class="row"><span>Average cycle (last 6)</span><b>${st.known ? st.cyc + ' days' : '—'}</b></div>
-    <div class="row"><span>Average period length</span><b>${st.plen} days</b></div>
-    ${st.lens.length > 1 ? `<div class="row"><span>Shortest / longest cycle</span><b>${Math.min(...st.lens)} / ${Math.max(...st.lens)} days</b></div>` : ''}
-  </div><h2>Cycles, newest first</h2><div class="card">`;
+  if (!st.ps.length) return `<h2>History</h2><div class="card muted">No periods logged yet.</div>`;
+  const tile = (v, l) => `<div class="tile"><b>${v}</b><span>${l}</span></div>`;
+  let h = `<h2>History</h2><div class="tiles">
+    ${tile(st.known ? st.cyc + ' days' : '—', 'Average cycle')}${tile(st.plen + ' days', 'Average period')}
+    ${st.lens.length > 1 ? tile(`${Math.min(...st.lens)}–${Math.max(...st.lens)}`, 'Cycle range (days)') : ''}
+  </div><div class="card">`;
   for (let i = st.ps.length - 1; i >= 0; i--) {
     const p = st.ps[i], nx = st.ps[i + 1];
     const moods = [];
@@ -366,8 +371,11 @@ function hist() {
   return h + `</div><p class="small muted">Mood and symptom patterns will show here once there are a few cycles of mood entries.</p>`;
 }
 
-function me() {
-  let h = `<h1>Me</h1><h2>Birth control</h2><div class="card">`;
+/* everything about birth control lives on this page only */
+function bc() {
+  let h = `<h1>Birth control</h1>`;
+  if (activeBC().length) h += `<p class="small muted">If you’re using hormonal birth control it usually changes or stops ovulation, so Alpha’s ovulation estimate may not apply.</p>`;
+  h += `<div class="card">`;
   if (!S.bc.length) h += `<p class="muted small" style="margin-top:0">Nothing recorded.</p>`;
   for (const b of S.bc.slice().sort((a, b) => b.start.localeCompare(a.start)))
     h += `<div class="bcitem"><div class="row" style="border:0;padding:0"><span>${esc(b.text)}<br><span class="small muted">${fmt(toN(b.start), { day: 'numeric', month: 'short', year: 'numeric' })} – ${b.end ? fmt(toN(b.end), { day: 'numeric', month: 'short', year: 'numeric' }) : 'now'}</span></span>
@@ -377,7 +385,12 @@ function me() {
     <label>What are you using?</label><input type="text" id="bcText" oninput="if(/ring/i.test(this.value))document.getElementById('bcRing').checked=true" placeholder="e.g. Copper coil, NuvaRing, the pill (Microgynon)">
     <label>Started</label><input type="date" id="bcStart" value="${toS(todayN())}">
     <label class="check"><input type="checkbox" id="bcRing"> It’s a ring: track when it goes in and comes out</label>
-    <div class="btns"><button onclick="addBC()">Add</button></div></div>
+    <div class="btns"><button onclick="addBC()">Add</button></div></div>`;
+  return h;
+}
+
+function me() {
+  return `<h1>Me</h1>
     <h2>Your data</h2><div class="card">
     <p class="small" style="margin-top:0">Everything is stored only on this phone. Save a backup now and then, to Files or iCloud Drive, so you can’t lose it.</p>
     <div class="btns">
@@ -387,7 +400,6 @@ function me() {
     </div>
     <p class="small muted">${Object.keys(S.days).length} days logged in total.</p></div>
     <p class="small muted" style="text-align:center">Alpha · version ${APP_VERSION}</p>`;
-  return h;
 }
 
 /* ---------- birth control ---------- */
@@ -404,10 +416,7 @@ function delBC(id) { if (confirm('Remove this entry?')) { S.bc = S.bc.filter(x =
 let draft = null;
 function openLog(n) {
   const s = toS(n);
-  draft = { s, flow: null, mood: null, note: '', ...(S.days[s] || {}) };
-  // rings in use on this day, and whether it went in or out that day
-  draft.rings = activeBC(n).filter(b => b.ring).map(b => ({ id: b.id, text: b.text, type: ((b.events || []).find(e => e.date === s) || {}).type || null }));
-  const v = document.createElement('div'); v.className = 'veil'; v.id = 'veil';
+  draft = { s, flow: null, mood: null, note: '', ...(S.days[s] || {}) };  const v = document.createElement('div'); v.className = 'veil'; v.id = 'veil';
   v.onclick = e => { if (e.target === v) closeLog(); };
   v.innerHTML = `<div class="sheet"><h1 style="margin-top:0">${fmt(n, { weekday: 'long', day: 'numeric', month: 'long' })}</h1><div id="sheetBody"></div></div>`;
   document.body.appendChild(v); drawSheet();
@@ -420,18 +429,13 @@ function drawSheet() {
     <label>How do you feel? (optional)</label><div class="chips mood">
       ${MOODS.map((m, i) => `<button class="chip ${draft.mood === i + 1 ? 'on' : ''}" onclick="draft.mood=draft.mood===${i + 1}?null:${i + 1};drawSheet()"><b>${i + 1}</b>${m}</button>`).join('')}
     </div>
-    ${draft.rings.map((r, i) => `<label>${esc(r.text)} (ring)</label><div class="chips">
-      ${[['in', 'Put in'], ['out', 'Taken out']].map(([t, l]) => `<button class="chip ${r.type === t ? 'on' : ''}" onclick="draft.rings[${i}].type=draft.rings[${i}].type==='${t}'?null:'${t}';drawSheet()">${l}</button>`).join('')}
-    </div>`).join('')}
     ${draft.tags && draft.tags.length ? `<label>Symptoms (from Clue)</label><div class="small">${draft.tags.map(tagLabel).map(esc).join(' · ')}</div>` : ''}
     <label>Notes (optional)</label><textarea id="noteBox" rows="3" placeholder="Symptoms, energy, anything you notice">${esc(draft.note || '')}</textarea>
     <div class="btns"><button onclick="saveLog()">Save</button><button class="btn2" onclick="closeLog()">Cancel</button></div>`;
   document.getElementById('noteBox').oninput = e => draft.note = e.target.value;
 }
 function saveLog() {
-  const { s, flow, mood } = draft, note = (draft.note || '').trim();
-  for (const r of draft.rings) setRing(r.id, s, r.type);
-  if (!flow && !mood && !note && !(draft.tags && draft.tags.length)) delete S.days[s];
+  const { s, flow, mood } = draft, note = (draft.note || '').trim();  if (!flow && !mood && !note && !(draft.tags && draft.tags.length)) delete S.days[s];
   else S.days[s] = { ...(S.days[s] || {}), flow, mood, note };
   save(); closeLog(); render();
 }
