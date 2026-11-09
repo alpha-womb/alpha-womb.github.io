@@ -123,7 +123,7 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 <script>
 "use strict";
 /* ---------- storage: everything lives in this phone's browser storage ---------- */
-const APP_VERSION = '1.2';   // shown on the Me tab; keep in step with VERSION in sw.js
+const APP_VERSION = '1.3';   // shown on the Me tab; keep in step with VERSION in sw.js
 const KEY = 'alphawomb.v1';
 const empty = () => ({ version: 1, days: {}, bc: [] });
 function load() {
@@ -132,6 +132,17 @@ function load() {
 }
 let S = load();
 function save() { localStorage.setItem(KEY, JSON.stringify(S)); }
+
+/* ---------- sexual health reminder (optional, turned on in Me). No notifications: it shows on Today when due. ---------- */
+// S.sti = { on: true/false, last: 'YYYY-MM-DD' or '' }. Due 3 months after the last test, or straight away if no date yet.
+function stiDue() {
+  const st = S.sti;
+  if (!st || !st.on) return null;
+  if (!st.last) return todayN();
+  const d = new Date(st.last + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + 3);
+  return Math.round(d.getTime() / 864e5);
+}
+function stiSet(k, v) { S.sti = { on: false, last: '', ...(S.sti || {}), [k]: v }; save(); render(); }
 
 /* ---------- dates as whole day numbers, so clock changes never shift a day ---------- */
 const toN = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
@@ -357,6 +368,11 @@ function today() {
   const nextTxt = f.late > 0 ? `${f.late} day${f.late > 1 ? 's' : ''} later than expected`
     : f.late === 0 ? 'Expected today' : `In about ${-f.late} days · ${fmt(f.next)}`;
   const ovTxt = f.ov >= t ? `Around ${fmt(f.ov)}` : 'Passed for this cycle';
+  const due = stiDue();
+  if (due !== null && due <= t) h += `<div class="card" style="border-left:4px solid var(--teal)">
+      <b>🩺 Time for a sexual health check</b>
+      <p class="small" style="margin:6px 0 0">${S.sti.last ? `It’s been 3 months since your last general STI test.` : `A general STI test every 3 months.`}</p>
+      <div class="btns"><button class="btn2" onclick="stiSet('last', toS(todayN()))">I’ve had a test</button></div></div>`;
   h += `<div class="card">
       <div class="row"><span>Next period</span><b>${nextTxt}</b></div>
       <div class="row"><span>Ovulation (rough)</span><b>${ovTxt}</b></div>
@@ -451,6 +467,11 @@ function me() {
       <button class="btn2" onclick="document.getElementById('fileBackup').click()">Restore from a backup</button>
     </div>
     <p class="small muted">${Object.keys(S.days).length} days logged in total.</p></div>
+    <h2>Sexual health reminder</h2><div class="card">
+      <label class="check" style="margin-top:0"><input type="checkbox" ${S.sti && S.sti.on ? 'checked' : ''} onchange="stiSet('on', this.checked)"> Remind me to have a general STI test every 3 months</label>
+      ${S.sti && S.sti.on ? `<label>Last test</label><input type="date" value="${S.sti.last || ''}" onchange="stiSet('last', this.value)">
+      <p class="small muted" style="margin-bottom:0">${S.sti.last ? `Next test due ${fmt(stiDue(), { day: 'numeric', month: 'long', year: 'numeric' })}. ` : 'Add the date of your last test, if you know it. '}The reminder shows on Today when it’s due. No notifications.</p>` : ''}
+    </div>
     <p class="small muted" style="text-align:center">Alpha · version ${APP_VERSION}</p>`;
 }
 

@@ -29,6 +29,10 @@ The day log has an optional **Sex** choice: None, Protected or Unprotected. The 
 blue-green for protected, pink for unprotected (white when it would sit on the same colour).
 Days brought in from Clue's "sex life" entries show their heart too.
 
+## Sexual health reminder
+Optional, turned on in **Me**. When on, a card appears on Today 3 months after the last test date (or straight away if no date is set).
+**I've had a test** sets today as the last test. The date can also be changed in Me. There are no notifications.
+
 ## Bringing in Clue data
 In the Clue export, the file that matters is `measurements.json`. Send it to the phone (AirDrop or Files),
 then go to **Me → Import from Clue**. Bleeding days go into the calendar. Symptoms (cramps, tiredness, bloating, etc.)
