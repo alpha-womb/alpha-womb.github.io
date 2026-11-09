@@ -24,6 +24,11 @@ From top to bottom: the month, then **Mood and symptom patterns** (coming later)
 History is worked out fresh from your logged days every time, so any period you log appears there straight away.
 It shows the averages, then **All cycles**, which starts folded away: tap it to open.
 
+## Sex
+The day log has an optional **Sex** choice: None, Protected or Unprotected. The calendar shows a small heart:
+blue-green for protected, pink for unprotected (white when it would sit on the same colour).
+Days brought in from Clue's "sex life" entries show their heart too.
+
 ## Bringing in Clue data
 In the Clue export, the file that matters is `measurements.json`. Send it to the phone (AirDrop or Files),
 then go to **Me → Import from Clue**. Bleeding days go into the calendar. Symptoms (cramps, tiredness, bloating, etc.)

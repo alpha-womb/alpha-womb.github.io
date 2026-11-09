@@ -101,7 +101,12 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 .ringbox .row{border-color:rgba(0,0,0,.08)}
 .d .ring{position:absolute;top:1px;width:10px;height:10px;border-radius:50%;border:2.5px solid var(--teal);box-sizing:border-box}
 .d .ring.out{border-color:var(--rose)}
-.d.period .ring.out{border-color:#fff}   /* pink would vanish on a pink period day */
+.d.period .ring.out{border-color:#fff}
+.d .sex{position:absolute;right:1px;bottom:0;font-size:11px;line-height:1}
+.d .sex.protected{color:var(--teal)}
+.d .sex.unprotected{color:var(--rose)}
+.d.period .sex.unprotected{color:#fff}   /* pink would vanish on a pink period day */
+.d.ovu .sex.protected{color:#fff}           /* same for the blue-green ovulation day */   /* pink would vanish on a pink period day */
 .hide{display:none}
 .cycles summary{list-style:none;cursor:pointer;font-weight:600;display:flex;justify-content:space-between;align-items:center}
 .cycles summary::-webkit-details-marker{display:none}
@@ -118,7 +123,7 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 <script>
 "use strict";
 /* ---------- storage: everything lives in this phone's browser storage ---------- */
-const APP_VERSION = '1.1';   // shown on the Me tab; keep in step with VERSION in sw.js
+const APP_VERSION = '1.2';   // shown on the Me tab; keep in step with VERSION in sw.js
 const KEY = 'alphawomb.v1';
 const empty = () => ({ version: 1, days: {}, bc: [] });
 function load() {
@@ -364,6 +369,7 @@ function today() {
 
 function cal() {
   const t = todayN(), f = forecast(), rd = ringDays();
+  const anySex = Object.values(S.days).some(e => sexOf(e));
   if (calMonth === null) { const d = new Date(); calMonth = [d.getFullYear(), d.getMonth()]; }
   const [y, m] = calMonth;
   const first = Date.UTC(y, m, 1) / 864e5;
@@ -380,7 +386,7 @@ function cal() {
     else if (f.pred && f.pred.has(n)) cls.push('pred');
     else if (f.ovu && f.ovu.has(n)) cls.push('ovu');
     else if (f.fert && f.fert.has(n)) cls.push('fert');
-    cells += `<div class="${cls.join(' ')}" onclick="openLog(${n})">${new Date(n * 864e5).getUTCDate()}${e.mood || e.note ? '<span class="dot"></span>' : ''}${rd[s] ? `<span class="ring ${rd[s]}"></span>` : ''}</div>`;
+    cells += `<div class="${cls.join(' ')}" onclick="openLog(${n})">${new Date(n * 864e5).getUTCDate()}${e.mood || e.note ? '<span class="dot"></span>' : ''}${rd[s] ? `<span class="ring ${rd[s]}"></span>` : ''}${sexOf(e) ? `<span class="sex ${sexOf(e)}">♥</span>` : ''}</div>`;
     if (i >= days - 1 && (i + startDow + 1) % 7 === 0) break;
   }
   return `<h1>Calendar</h1><div class="card">
@@ -389,7 +395,7 @@ function cal() {
       <button class="btn2" onclick="shiftMonth(1)">›</button></div>
     <div class="grid">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => `<div class="dow">${x}</div>`).join('')}${cells}</div>
     <div class="legend"><span><i style="background:var(--rose)"></i>Period</span><span><i style="background:var(--rose-soft);border:1px dashed var(--rose)"></i>Expected</span>
-      <span><i style="background:var(--teal)"></i>Ovulation (rough)</span><span><i style="background:var(--teal-soft)"></i>Fertile window</span><span><i style="background:var(--amber)"></i>Mood or note</span>${Object.keys(rd).length ? `<span><i style="border:2.5px solid var(--teal);box-sizing:border-box"></i>Ring in</span><span><i style="border:2.5px solid var(--rose);box-sizing:border-box"></i>Ring out</span>` : ''}</div>
+      <span><i style="background:var(--teal)"></i>Ovulation (rough)</span><span><i style="background:var(--teal-soft)"></i>Fertile window</span><span><i style="background:var(--amber)"></i>Mood or note</span>${Object.keys(rd).length ? `<span><i style="border:2.5px solid var(--teal);box-sizing:border-box"></i>Ring in</span><span><i style="border:2.5px solid var(--rose);box-sizing:border-box"></i>Ring out</span>` : ''}${anySex ? `<span><b style="color:var(--teal)">♥</b> Protected sex</span><span><b style="color:var(--rose)">♥</b> Unprotected sex</span>` : ''}</div>
     <p class="small muted" style="margin-bottom:0">Tap any day to log or change it.</p>
   </div>
   <h2>Mood and symptom patterns</h2><div class="card small muted">These will show here once there are a few cycles of mood entries.</div>
@@ -461,7 +467,8 @@ function delBC(id) { if (confirm('Remove this entry?')) { S.bc = S.bc.filter(x =
 let draft = null;
 function openLog(n) {
   const s = toS(n);
-  draft = { s, flow: null, mood: null, note: '', ...(S.days[s] || {}) };  const v = document.createElement('div'); v.className = 'veil'; v.id = 'veil';
+  draft = { s, flow: null, mood: null, note: '', ...(S.days[s] || {}) };
+  draft.sex = sexOf(draft);  const v = document.createElement('div'); v.className = 'veil'; v.id = 'veil';
   v.onclick = e => { if (e.target === v) closeLog(); };
   v.innerHTML = `<div class="sheet"><h1 style="margin-top:0">${fmt(n, { weekday: 'long', day: 'numeric', month: 'long' })}</h1><div id="sheetBody"></div></div>`;
   document.body.appendChild(v); drawSheet();
@@ -474,14 +481,18 @@ function drawSheet() {
     <label>How do you feel? (optional)</label><div class="chips mood">
       ${MOODS.map((m, i) => `<button class="chip ${draft.mood === i + 1 ? 'on' : ''}" onclick="draft.mood=draft.mood===${i + 1}?null:${i + 1};drawSheet()"><b>${i + 1}</b>${m}</button>`).join('')}
     </div>
+    <label>Sex (optional)</label><div class="chips">
+      ${[[null, 'None'], ['protected', 'Protected'], ['unprotected', 'Unprotected']].map(([v, l]) => `<button class="chip ${draft.sex === v ? 'on' : ''}" onclick="draft.sex=${v ? `'${v}'` : null};drawSheet()">${l}</button>`).join('')}
+    </div>
     ${draft.tags && draft.tags.length ? `<label>Symptoms (from Clue)</label><div class="small">${draft.tags.map(tagLabel).map(esc).join(' · ')}</div>` : ''}
     <label>Notes (optional)</label><textarea id="noteBox" rows="3" placeholder="Symptoms, energy, anything you notice">${esc(draft.note || '')}</textarea>
     <div class="btns"><button onclick="saveLog()">Save</button><button class="btn2" onclick="closeLog()">Cancel</button></div>`;
   document.getElementById('noteBox').oninput = e => draft.note = e.target.value;
 }
 function saveLog() {
-  const { s, flow, mood } = draft, note = (draft.note || '').trim();  if (!flow && !mood && !note && !(draft.tags && draft.tags.length)) delete S.days[s];
-  else S.days[s] = { ...(S.days[s] || {}), flow, mood, note };
+  const { s, flow, mood, sex } = draft, note = (draft.note || '').trim();
+  if (!flow && !mood && !note && !sex && !(draft.tags && draft.tags.length)) delete S.days[s];
+  else S.days[s] = { ...(S.days[s] || {}), flow, mood, note, sex };
   save(); closeLog(); render();
 }
 function closeLog() { const v = document.getElementById('veil'); if (v) v.remove(); }
@@ -522,6 +533,12 @@ function parseClue(text) {
     for (const k in o) if (o[k] && typeof o[k] === 'object') walk(o[k]);
   })(j);
   return { found, tags };
+}
+// Sex on a day: 'protected' | 'unprotected' | null. Logged in Alpha, or taken from Clue's "sex life" entries.
+function sexOf(e) {
+  if (e.sex !== undefined) return e.sex;
+  const t = (e.tags || []).filter(x => x.startsWith('sex_life:')).join(' ');
+  return /unprotected/.test(t) ? 'unprotected' : /protected/.test(t) ? 'protected' : null;
 }
 const tagLabel = t => { const [type, opt] = t.split(':'); return `${opt.replace(/_/g, ' ')} (${type.replace(/_/g, ' ')})`; };
 document.getElementById('fileClue').onchange = async e => {
