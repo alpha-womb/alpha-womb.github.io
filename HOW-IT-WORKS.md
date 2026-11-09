@@ -47,10 +47,15 @@ To update it: change the files here, change `VERSION` in `sw.js`, then save and 
 The phone picks up the new version the next time it opens the app with internet.
 
 ## Advice on the Today screen
-Today shows boxes for the current phase: Hormonal changes, Food, Seeds, Exercise, Sleep (and Supplement in the luteal phase).
+The day box shows the day, the phase and, on the right, what's happening with hormones.
+Below it, Food, Seeds, Exercise and Sleep are small squares with emoji only. Tap one to open its full text above the others; tap it again to close.
+In the luteal phase the supplement line (Magnesium + B6) is part of Food.
 The wording is Riyo's approved text from the advice doc (https://claude.ai/artifact/MUsx7TLLQmVBMitSiPkKEv), copied word for word
-into `ADVICE` and `SEEDS` near the top of the screens section in `index.html`. Change the doc first, then the app.
+into `ADVICE` and `SEEDS` near the top of the screens section in `index.html`; the emoji are in `SHORT` and `SEEDS_SHORT`. Change the doc first, then the app.
 Seeds switch from flax + pumpkin to sesame + sunflower once the luteal phase starts (about day 15).
+
+## Version numbers
+Shown at the bottom of Me as 1.1, 1.2 and so on. Change `APP_VERSION` in `index.html` and `VERSION` in `sw.js` together.
 
 ## Still to come
 - Mood and symptom patterns, once there are a few cycles of entries.

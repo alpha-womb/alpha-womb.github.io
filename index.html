@@ -81,6 +81,16 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 .abox{background:var(--card);border:1px solid var(--line);border-left:4px solid;border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow)}
 .alabel{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
 .abox p{margin:4px 0;font-size:15px}
+.abox{cursor:pointer}
+.aclose{float:right;color:var(--muted);font-weight:400}
+.asqs{display:grid;gap:8px;margin-bottom:12px}
+.asq{aspect-ratio:1;background:var(--card);color:var(--ink);border:1px solid var(--line);border-top:4px solid;border-radius:14px;box-shadow:var(--shadow);
+  padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;font-weight:600;line-height:1.2;text-align:center;min-width:0;width:auto}
+.asq .em{font-size:30px;line-height:1;white-space:nowrap}
+.herorow{display:flex;gap:14px;align-items:center}
+.herorow>div:first-child{flex:none}
+.herohorm{flex:1;min-width:0;font-size:14px;border-left:1px solid var(--line);padding-left:14px}
+.herohorm p{margin:4px 0}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin-bottom:12px}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;box-shadow:var(--shadow)}
 .tile b{display:block;font-size:18px}
@@ -108,7 +118,7 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 <script>
 "use strict";
 /* ---------- storage: everything lives in this phone's browser storage ---------- */
-const APP_VERSION = 10;   // shown on the Me tab; keep in step with VERSION in sw.js
+const APP_VERSION = '1.1';   // shown on the Me tab; keep in step with VERSION in sw.js
 const KEY = 'alphawomb.v1';
 const empty = () => ({ version: 1, days: {}, bc: [] });
 function load() {
@@ -271,8 +281,7 @@ const FOLLICULAR_LIKE = {
 };
 const LUTEAL = {
   hormones: ['Progesterone rises, then both hormones fall in the last few days before your period.'],
-  food: ['Get about 1,000–1,200 mg of calcium daily: dairy, fortified plant milk, sesame/tahini, kale.', 'Expect to be a little hungrier.'],
-  supplement: ['Magnesium + B6 (10mg)'],
+  food: ['Get about 1,000–1,200 mg of calcium daily: dairy, fortified plant milk, sesame/tahini, kale.', 'Expect to be a little hungrier.', 'Supplement: Magnesium + B6 (10mg)'],
   exercise: ['Regular aerobic exercise (walking, swimming, running, cycling)'],
   sleep: ['Sleep often lighter. Cool bedroom and steady sleep times.']
 };
@@ -294,11 +303,34 @@ const ADVICE = {
 // Seed cycling: flax + pumpkin up to ovulation (days 1–14), sesame + sunflower after it.
 const SEEDS = { before: 'Seed cycling: 1 tablespoon each of flax and pumpkin.', after: 'Seed cycling: 1 tablespoon each of sesame and sunflower.' };
 const BOXES = [['hormones', 'Hormonal changes', 'var(--rose)'], ['food', 'Food', 'var(--amber)'], ['seeds', 'Seeds', 'var(--amber)'],
-  ['exercise', 'Exercise', 'var(--teal)'], ['sleep', 'Sleep', '#7A6FB0'], ['supplement', 'Supplement', 'var(--muted)']];
+  ['exercise', 'Exercise', 'var(--teal)'], ['sleep', 'Sleep', '#7A6FB0']];
+// Emoji for the squares (approved by Riyo, 9 Nov 2026). No words: tap a square for the full text.
+const SHORT_FOLL = { food: '🍳', exercise: '🏋️', sleep: '😴' };
+const SHORT_LUT = { food: '🥛', exercise: '🚶', sleep: '❄️' };
+const SHORT = {
+  Menstrual: { food: '🥬🍎', exercise: '🧘', sleep: '🔥' },
+  Follicular: SHORT_FOLL, Ovulatory: SHORT_FOLL, Luteal: SHORT_LUT, Late: SHORT_LUT
+};
+const SEEDS_SHORT = { before: '🌱🎃', after: '🌻' };
+
+// Today: advice as small squares; tapping one opens it full width above the others. Tap it again to close.
+let openBox = null;
+function toggleBox(k) { openBox = openBox === k ? null : k; render(); }
 function adviceBoxes(phase) {
-  const a = { ...ADVICE[phase], seeds: [phase === 'Luteal' || phase === 'Late' ? SEEDS.after : SEEDS.before] };
-  return BOXES.filter(([k]) => a[k]).map(([k, label, colour]) =>
-    `<div class="abox" style="border-left-color:${colour}"><div class="alabel" style="color:${colour}">${label}</div>${a[k].map(t => `<p>${esc(t)}</p>`).join('')}</div>`).join('');
+  const late = phase === 'Luteal' || phase === 'Late';
+  const a = { ...ADVICE[phase], seeds: [late ? SEEDS.after : SEEDS.before] };
+  const sh = { ...SHORT[phase], seeds: late ? SEEDS_SHORT.after : SEEDS_SHORT.before };
+  const boxes = BOXES.filter(([k]) => k !== 'hormones' && a[k]);
+  const open = boxes.find(([k]) => k === openBox);
+  let h = '';
+  if (open) {
+    const [k, label, colour] = open;
+    h += `<div class="abox" style="border-left-color:${colour}" onclick="toggleBox('${k}')"><div class="alabel" style="color:${colour}">${label}<span class="aclose">✕</span></div>${a[k].map(t => `<p>${esc(t)}</p>`).join('')}</div>`;
+  }
+  const rest = boxes.filter(b => b !== open);
+  return h + `<div class="asqs" style="grid-template-columns:repeat(${rest.length},1fr)">${rest.map(([k, label, colour]) => {
+    return `<button class="asq" style="border-top-color:${colour}" onclick="toggleBox('${k}')" aria-label="${label}"><span class="em">${sh[k] || label}</span></button>`;
+  }).join('')}</div>`;
 }
 
 function today() {
@@ -310,10 +342,11 @@ function today() {
     return h;
   }
   const d = f.st;
-  h += `<div class="card hero">
+  h += `<div class="card hero"><div class="herorow"><div>
       <div class="muted small">${fmt(t, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
       <div class="big">Day ${f.cd}</div>
       <span class="phase">${f.phase === 'Late' ? 'Period late' : f.phase + ' phase'}</span>
+    </div><div class="herohorm">${ADVICE[f.phase].hormones.map(x => `<p>${esc(x)}</p>`).join('')}</div></div>
     </div>
     ${adviceBoxes(f.phase)}`;
   const nextTxt = f.late > 0 ? `${f.late} day${f.late > 1 ? 's' : ''} later than expected`
