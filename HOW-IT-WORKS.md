@@ -31,7 +31,8 @@ Days brought in from Clue's "sex life" entries show their heart too.
 
 ## Sexual health reminder
 Optional, turned on in **Me**. When on, a card appears on Today 3 months after the last test date (or straight away if no date is set).
-**I've had a test** sets today as the last test. The date can also be changed in Me. There are no notifications.
+**I've had a test** sets today as the last test. The date can also be changed in Me.
+A web app can't send notifications on a date without a server, so Me has **Add a reminder to my phone's calendar**: it makes a calendar event repeating every 3 months (alert 9am) that the phone's Calendar app notifies about.
 
 ## Bringing in Clue data
 In the Clue export, the file that matters is `measurements.json`. Send it to the phone (AirDrop or Files),
@@ -44,6 +45,14 @@ Everything about birth control is on the **Birth control** tab (nothing on Today
 the calendar shows a small circle on days the ring went in (blue-green circle) or came out (pink circle, white on period days).
 For a ring, that tab has a one-tap **Ring in/out today** button and an **Or add an earlier date** box: choose Put in / Taken out, pick the date, tap **Add this date**.
 The choice flips after each date, so past dates can be entered quickly in order. **Ring history** lists them, each with ✕ to remove it.
+
+## Qlaira
+If an active birth control entry is called Qlaira, the Birth control tab asks for the date the current pack started.
+Today then changes: the day box shows the pack day (1–28) and which tablet is expected, and the advice squares are replaced
+by five tablet boxes (dark yellow 1–2, medium red 3–7, light yellow 8–24, dark red 25–26, white 27–28) to record which one was
+actually taken. Taking a dark yellow after a different tablet starts a new pack automatically (undone if untapped).
+While Qlaira is active, the ovulation estimate, fertile window and predicted period are hidden from Today and the calendar.
+Tablet schedule from the Qlaira prescribing information (medicines.org.uk).
 
 ## Backups
 **Me → Save a backup** saves one file with everything, which you can keep in Files or iCloud Drive.

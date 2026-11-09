@@ -91,6 +91,11 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 .herorow>div:first-child{flex:none}
 .herohorm{flex:1;min-width:0;font-size:14px;border-left:1px solid var(--line);padding-left:14px}
 .herohorm p{margin:4px 0}
+.pdot{display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.25);vertical-align:-1px;margin-right:6px}
+.pdot.big{width:26px;height:26px;margin:0}
+.asq.pill{position:relative}
+.asq.pill.on{outline:3px solid var(--ink);outline-offset:-3px}
+.asq .tick{position:absolute;top:3px;right:6px;font-size:12px}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin-bottom:12px}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;box-shadow:var(--shadow)}
 .tile b{display:block;font-size:18px}
@@ -123,7 +128,7 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 <script>
 "use strict";
 /* ---------- storage: everything lives in this phone's browser storage ---------- */
-const APP_VERSION = '1.3';   // shown on the Me tab; keep in step with VERSION in sw.js
+const APP_VERSION = '1.4';   // shown on the Me tab; keep in step with VERSION in sw.js
 const KEY = 'alphawomb.v1';
 const empty = () => ({ version: 1, days: {}, bc: [] });
 function load() {
@@ -141,6 +146,24 @@ function stiDue() {
   if (!st.last) return todayN();
   const d = new Date(st.last + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + 3);
   return Math.round(d.getTime() / 864e5);
+}
+const stiCard = () => `<div class="card" style="border-left:4px solid var(--teal)">
+      <b>🩺 Time for a sexual health check</b>
+      <p class="small" style="margin:6px 0 0">${S.sti.last ? `It’s been 3 months since your last general STI test.` : `A general STI test every 3 months.`}</p>
+      <div class="btns"><button class="btn2" onclick="stiSet('last', toS(todayN()))">I’ve had a test</button></div></div>`;
+// A web app can't send a notification on a set date without a server, so instead this makes a calendar event
+// (repeating every 3 months, alert at 9am) for the phone's own Calendar app, which does the notifying.
+function stiCalendar() {
+  const start = Math.max(stiDue(), todayN()), ymd = n => toS(n).replace(/-/g, '');
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Alpha//EN', 'BEGIN:VEVENT',
+    `UID:alpha-sti-${Date.now()}@alpha-womb.github.io`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
+    `DTSTART;VALUE=DATE:${ymd(start)}`, `DTEND;VALUE=DATE:${ymd(start + 1)}`, 'RRULE:FREQ=MONTHLY;INTERVAL=3',
+    'SUMMARY:Sexual health check (STI test)', 'DESCRIPTION:Time for a general STI test.',
+    'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Sexual health check (STI test)', 'TRIGGER:PT9H', 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+  a.download = 'sti-reminder.ics'; a.click();
 }
 function stiSet(k, v) { S.sti = { on: false, last: '', ...(S.sti || {}), [k]: v }; save(); render(); }
 
@@ -207,6 +230,30 @@ function forecast() {
   return { st, last, cd, next, ov, phase: phaseFor(cd, st.cyc, st.plen), late: t - next, pred, fert, ovu };
 }
 const activeBC = (n = todayN()) => S.bc.filter(b => toN(b.start) <= n && (!b.end || toN(b.end) >= n));
+
+/* ---------- Qlaira: a 28-tablet pack with 5 kinds of tablet, no break between packs ---------- */
+// [key, name, colour, usual pack days]. From the Qlaira prescribing information.
+const PILLS = [['dy', 'Dark yellow', '#D9A21B', '1–2'], ['mr', 'Medium red', '#D9534F', '3–7'], ['ly', 'Light yellow', '#F3DE85', '8–24'],
+  ['dr', 'Dark red', '#8B1E2D', '25–26'], ['w', 'White', '#FFFFFF', '27–28']];
+const qlaira = () => activeBC().find(b => /qlaira/i.test(b.text));
+// Day 1–28 of the current pack, counting on from the pack start date (packs follow on with no break).
+const packDay = (b, n = todayN()) => b && b.pack ? ((n - toN(b.pack)) % 28 + 28) % 28 + 1 : null;
+const expectedPill = d => d <= 2 ? 'dy' : d <= 7 ? 'mr' : d <= 24 ? 'ly' : d <= 26 ? 'dr' : 'w';
+// Today: record which tablet was actually taken (people don't always take it as prescribed). Tap again to undo.
+// Taking a dark yellow after a different tablet means a new pack has started, so the pack start moves to today.
+function logPill(k) {
+  const t = todayN(), s = toS(t), e = { ...(S.days[s] || {}) }, b = qlaira();
+  if (e.pill && e.packWas !== undefined && b) { b.pack = e.packWas; delete e.packWas; }   // undo a pack restart from an earlier tap today
+  if (e.pill === k) delete e.pill;
+  else {
+    e.pill = k;
+    const prev = (S.days[toS(t - 1)] || {}).pill;
+    if (k === 'dy' && prev !== 'dy' && b && b.pack !== s) { e.packWas = b.pack || ''; b.pack = s; }
+  }
+  if (Object.entries(e).some(([k2, v]) => k2 !== 'packWas' && v && (!Array.isArray(v) || v.length))) S.days[s] = e; else delete S.days[s];
+  save(); render();
+}
+function setPack(id, date) { const b = S.bc.find(x => x.id === id); b.pack = date; save(); render(); }
 
 /* ---------- ring: any birth control entry can be marked as a ring, then gets in/out dates ---------- */
 // Where the ring was on day n: { state: 'in'|'out', since } from the latest change on or before n.
@@ -357,7 +404,8 @@ function today() {
       <div class="btns"><button onclick="openLog(${t})">Log today</button><button class="btn2" onclick="go('me')">Import from Clue</button></div></div>`;
     return h;
   }
-  const d = f.st;
+  const d = f.st, q = qlaira();
+  if (q) return h + qlairaToday(q, t);
   h += `<div class="card hero"><div class="herorow"><div>
       <div class="muted small">${fmt(t, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
       <div class="big">Day ${f.cd}</div>
@@ -369,10 +417,7 @@ function today() {
     : f.late === 0 ? 'Expected today' : `In about ${-f.late} days · ${fmt(f.next)}`;
   const ovTxt = f.ov >= t ? `Around ${fmt(f.ov)}` : 'Passed for this cycle';
   const due = stiDue();
-  if (due !== null && due <= t) h += `<div class="card" style="border-left:4px solid var(--teal)">
-      <b>🩺 Time for a sexual health check</b>
-      <p class="small" style="margin:6px 0 0">${S.sti.last ? `It’s been 3 months since your last general STI test.` : `A general STI test every 3 months.`}</p>
-      <div class="btns"><button class="btn2" onclick="stiSet('last', toS(todayN()))">I’ve had a test</button></div></div>`;
+  if (due !== null && due <= t) h += stiCard();
   h += `<div class="card">
       <div class="row"><span>Next period</span><b>${nextTxt}</b></div>
       <div class="row"><span>Ovulation (rough)</span><b>${ovTxt}</b></div>
@@ -383,9 +428,36 @@ function today() {
   return h;
 }
 
+// Today for someone on Qlaira: pack day + expected tablet, then five boxes to log the tablet taken.
+// No phase advice and no ovulation estimate (the pill is designed to stop ovulation).
+function qlairaToday(q, t) {
+  const pd = packDay(q, t), exp = pd ? PILLS.find(p => p[0] === expectedPill(pd)) : null;
+  const taken = (S.days[toS(t)] || {}).pill;
+  let h = `<div class="card hero"><div class="herorow"><div>
+      <div class="muted small">${fmt(t, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+      <div class="big">${pd ? 'Day ' + pd : 'Qlaira'}</div>
+      <span class="phase">${pd ? 'Qlaira pack' : 'Pack not set'}</span>
+    </div><div class="herohorm">${exp ? `<p><span class="pdot" style="background:${exp[2]}"></span>${exp[1]} tablet expected today</p>`
+      : `<p>Add the date you started your current pack on the <b>Birth control</b> tab.</p>`}</div></div></div>
+    <p class="small muted" style="margin:0 0 6px">Which tablet did you take today?</p>
+    <div class="asqs" style="grid-template-columns:repeat(5,1fr)">${PILLS.map(([k, name, colour, days]) =>
+      `<button class="asq pill ${taken === k ? 'on' : ''}" style="border-top-color:${colour}" onclick="logPill('${k}')" aria-label="${name}"><span class="pdot big" style="background:${colour}"></span><span class="small muted">${days}</span>${taken === k ? '<span class="tick">✓</span>' : ''}</button>`).join('')}</div>`;
+  if (taken) h += `<p class="small" style="margin-top:0">${PILLS.find(p => p[0] === taken)[1]} taken today.</p>`;
+  const due = stiDue();
+  if (due !== null && due <= t) h += stiCard();
+  if (pd) {
+    const bleed = t + (pd <= 25 ? 25 - pd : 28 - pd + 25);
+    h += `<div class="card"><div class="row"><span>Bleed usually starts</span><b>Around ${fmt(bleed)}</b></div>
+      <div class="row"><span>New pack starts</span><b>${fmt(t + 29 - pd)}</b></div></div>`;
+  }
+  return h + `<div class="btns"><button onclick="openLog(${t})">Log today</button></div>
+    <p class="small muted">Not a substitute for your Qlaira leaflet. If you miss a tablet, check the leaflet or ask a pharmacist.</p>`;
+}
+
 function cal() {
   const t = todayN(), f = forecast(), rd = ringDays();
   const anySex = Object.values(S.days).some(e => sexOf(e));
+  const onQ = !!qlaira();
   if (calMonth === null) { const d = new Date(); calMonth = [d.getFullYear(), d.getMonth()]; }
   const [y, m] = calMonth;
   const first = Date.UTC(y, m, 1) / 864e5;
@@ -399,6 +471,7 @@ function cal() {
     if (n === t) cls.push('today');
     if (BLEED.has(e.flow)) cls.push('period');
     else if (e.flow === 'spotting') cls.push('spot');
+    else if (onQ) { /* on Qlaira: no predicted period, ovulation or fertile window */ }
     else if (f.pred && f.pred.has(n)) cls.push('pred');
     else if (f.ovu && f.ovu.has(n)) cls.push('ovu');
     else if (f.fert && f.fert.has(n)) cls.push('fert');
@@ -410,8 +483,8 @@ function cal() {
       <b>${new Date(first * 864e5).toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'long', year: 'numeric' })}</b>
       <button class="btn2" onclick="shiftMonth(1)">›</button></div>
     <div class="grid">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => `<div class="dow">${x}</div>`).join('')}${cells}</div>
-    <div class="legend"><span><i style="background:var(--rose)"></i>Period</span><span><i style="background:var(--rose-soft);border:1px dashed var(--rose)"></i>Expected</span>
-      <span><i style="background:var(--teal)"></i>Ovulation (rough)</span><span><i style="background:var(--teal-soft)"></i>Fertile window</span><span><i style="background:var(--amber)"></i>Mood or note</span>${Object.keys(rd).length ? `<span><i style="border:2.5px solid var(--teal);box-sizing:border-box"></i>Ring in</span><span><i style="border:2.5px solid var(--rose);box-sizing:border-box"></i>Ring out</span>` : ''}${anySex ? `<span><b style="color:var(--teal)">♥</b> Protected sex</span><span><b style="color:var(--rose)">♥</b> Unprotected sex</span>` : ''}</div>
+    <div class="legend"><span><i style="background:var(--rose)"></i>Period</span>${onQ ? '' : `<span><i style="background:var(--rose-soft);border:1px dashed var(--rose)"></i>Expected</span>
+      <span><i style="background:var(--teal)"></i>Ovulation (rough)</span><span><i style="background:var(--teal-soft)"></i>Fertile window</span>`}<span><i style="background:var(--amber)"></i>Mood or note</span>${Object.keys(rd).length ? `<span><i style="border:2.5px solid var(--teal);box-sizing:border-box"></i>Ring in</span><span><i style="border:2.5px solid var(--rose);box-sizing:border-box"></i>Ring out</span>` : ''}${anySex ? `<span><b style="color:var(--teal)">♥</b> Protected sex</span><span><b style="color:var(--rose)">♥</b> Unprotected sex</span>` : ''}</div>
     <p class="small muted" style="margin-bottom:0">Tap any day to log or change it.</p>
   </div>
   <h2>Mood and symptom patterns</h2><div class="card small muted">These will show here once there are a few cycles of mood entries.</div>
@@ -448,7 +521,10 @@ function bc() {
   for (const b of S.bc.slice().sort((a, b) => b.start.localeCompare(a.start)))
     h += `<div class="bcitem"><div class="row" style="border:0;padding:0"><span>${esc(b.text)}<br><span class="small muted">${fmt(toN(b.start), { day: 'numeric', month: 'short', year: 'numeric' })} – ${b.end ? fmt(toN(b.end), { day: 'numeric', month: 'short', year: 'numeric' }) : 'now'}</span></span>
       <span class="chips" style="flex-wrap:nowrap">${b.end ? '' : `<button class="chip" onclick="endBC('${b.id}')">Stopped</button>`}<button class="chip" onclick="delBC('${b.id}')">✕</button></span></div>
-      ${isRing(b) ? ringEditor(b) : ''}</div>`;
+      ${isRing(b) ? ringEditor(b) : ''}
+      ${/qlaira/i.test(b.text) && !b.end ? `<div class="ringbox"><b class="small">${b.pack ? `Pack day ${packDay(b)} of 28` : 'Add the date you started your current pack'}</b>
+        <label>Current pack started</label><input type="date" value="${b.pack || ''}" onchange="setPack('${b.id}', this.value)">
+        <p class="small muted" style="margin-bottom:0">Log which tablet you take each day on the Today screen. Taking a dark yellow tablet after a different one starts a new pack automatically.</p></div>` : ''}</div>`;
   h += `${S.bc.length ? `<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:6px"><b class="small">Add other birth control</b></div>` : ''}
     <label>What are you using?</label><input type="text" id="bcText" placeholder="e.g. Copper coil, NuvaRing, the pill (Microgynon)">
     <label>Started</label><input type="date" id="bcStart" value="${toS(todayN())}">
@@ -470,7 +546,9 @@ function me() {
     <h2>Sexual health reminder</h2><div class="card">
       <label class="check" style="margin-top:0"><input type="checkbox" ${S.sti && S.sti.on ? 'checked' : ''} onchange="stiSet('on', this.checked)"> Remind me to have a general STI test every 3 months</label>
       ${S.sti && S.sti.on ? `<label>Last test</label><input type="date" value="${S.sti.last || ''}" onchange="stiSet('last', this.value)">
-      <p class="small muted" style="margin-bottom:0">${S.sti.last ? `Next test due ${fmt(stiDue(), { day: 'numeric', month: 'long', year: 'numeric' })}. ` : 'Add the date of your last test, if you know it. '}The reminder shows on Today when it’s due. No notifications.</p>` : ''}
+      <p class="small muted" style="margin-bottom:0">${S.sti.last ? `Next test due ${fmt(stiDue(), { day: 'numeric', month: 'long', year: 'numeric' })}. ` : 'Add the date of your last test, if you know it. '}The reminder shows on Today when it’s due.</p>
+      <div class="btns"><button class="btn2" onclick="stiCalendar()">Add a reminder to my phone’s calendar</button></div>
+      <p class="small muted" style="margin-bottom:0">Your Calendar app will then notify you every 3 months, even if you don’t open Alpha.</p>` : ''}
     </div>
     <p class="small muted" style="text-align:center">Alpha · version ${APP_VERSION}</p>`;
 }
@@ -512,7 +590,7 @@ function drawSheet() {
 }
 function saveLog() {
   const { s, flow, mood, sex } = draft, note = (draft.note || '').trim();
-  if (!flow && !mood && !note && !sex && !(draft.tags && draft.tags.length)) delete S.days[s];
+  if (!flow && !mood && !note && !sex && !draft.pill && !(draft.tags && draft.tags.length)) delete S.days[s];
   else S.days[s] = { ...(S.days[s] || {}), flow, mood, note, sex };
   save(); closeLog(); render();
 }
