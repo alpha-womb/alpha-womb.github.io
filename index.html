@@ -93,6 +93,11 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 .d .ring.out{border-color:var(--rose)}
 .d.period .ring.out{border-color:#fff}   /* pink would vanish on a pink period day */
 .hide{display:none}
+.cycles summary{list-style:none;cursor:pointer;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.cycles summary::-webkit-details-marker{display:none}
+.cycles summary::after{content:'›';font-size:22px;color:var(--muted);transition:transform .2s}
+.cycles[open] summary::after{transform:rotate(90deg)}
+.cycles[open] summary{margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -103,7 +108,7 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 <script>
 "use strict";
 /* ---------- storage: everything lives in this phone's browser storage ---------- */
-const APP_VERSION = 9;   // shown on the Me tab; keep in step with VERSION in sw.js
+const APP_VERSION = 10;   // shown on the Me tab; keep in step with VERSION in sw.js
 const KEY = 'alphawomb.v1';
 const empty = () => ({ version: 1, days: {}, bc: [] });
 function load() {
@@ -353,7 +358,9 @@ function cal() {
     <div class="legend"><span><i style="background:var(--rose)"></i>Period</span><span><i style="background:var(--rose-soft);border:1px dashed var(--rose)"></i>Expected</span>
       <span><i style="background:var(--teal)"></i>Ovulation (rough)</span><span><i style="background:var(--teal-soft)"></i>Fertile window</span><span><i style="background:var(--amber)"></i>Mood or note</span>${Object.keys(rd).length ? `<span><i style="border:2.5px solid var(--teal);box-sizing:border-box"></i>Ring in</span><span><i style="border:2.5px solid var(--rose);box-sizing:border-box"></i>Ring out</span>` : ''}</div>
     <p class="small muted" style="margin-bottom:0">Tap any day to log or change it.</p>
-  </div>${history()}`;
+  </div>
+  <h2>Mood and symptom patterns</h2><div class="card small muted">These will show here once there are a few cycles of mood entries.</div>
+  ${history()}`;
 }
 function shiftMonth(k) { let [y, m] = calMonth; m += k; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } calMonth = [y, m]; render(); }
 
@@ -365,16 +372,16 @@ function history() {
   let h = `<h2>History</h2><div class="tiles">
     ${tile(st.known ? st.cyc + ' days' : '—', 'Average cycle')}${tile(st.plen + ' days', 'Average period')}
     ${st.lens.length > 1 ? tile(`${Math.min(...st.lens)}–${Math.max(...st.lens)}`, 'Cycle range (days)') : ''}
-  </div><div class="card">`;
+  </div><details class="card cycles"><summary>All cycles (${st.ps.length})</summary>`;
   for (let i = st.ps.length - 1; i >= 0; i--) {
     const p = st.ps[i], nx = st.ps[i + 1];
     const moods = [];
     for (let n = p.start; n < (nx ? nx.start : todayN() + 1); n++) { const e = S.days[toS(n)]; if (e && e.mood) moods.push(e.mood); }
     h += `<div class="row"><span>${fmt(p.start, { day: 'numeric', month: 'short', year: 'numeric' })}<br>
-      <span class="small muted">Period ${p.end - p.start + 1} days${moods.length ? ` · average mood ${avg(moods).toFixed(1)} of 5` : ''}</span></span>
+      <span class="small muted">Period ${p.end - p.start + 1} day${p.end > p.start ? 's' : ''}${moods.length ? ` · average mood ${avg(moods).toFixed(1)} of 5` : ''}</span></span>
       <b>${nx ? (nx.start - p.start) + ' days' : 'Current'}</b></div>`;
   }
-  return h + `</div><p class="small muted">Mood and symptom patterns will show here once there are a few cycles of mood entries.</p>`;
+  return h + `</details>`;   // the full list starts folded away; tap to open
 }
 
 /* everything about birth control lives on this page only */

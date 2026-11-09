@@ -1,6 +1,6 @@
 // Keeps a copy of the app on the phone so it opens with no internet.
 // Bump VERSION whenever the app changes, so phones pick up the new copy.
-const VERSION = 'alpha-9';
+const VERSION = 'alpha-10';
 const FILES = ['./', 'index.html', 'manifest.json', 'icon-180.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

@@ -19,6 +19,11 @@ None of these files contain your data. Your data is saved inside the app on the 
 - **Ovulation (rough)** = 14 days before the next expected period. The fertile window runs from 5 days before to 1 day after it.
 - **Phases:** Menstrual (the period days) → Follicular → Ovulatory (ovulation day ± 1) → Luteal.
 
+## The Calendar tab
+From top to bottom: the month, then **Mood and symptom patterns** (coming later), then **History**.
+History is worked out fresh from your logged days every time, so any period you log appears there straight away.
+It shows the averages, then **All cycles**, which starts folded away: tap it to open.
+
 ## Bringing in Clue data
 In the Clue export, the file that matters is `measurements.json`. Send it to the phone (AirDrop or Files),
 then go to **Me → Import from Clue**. Bleeding days go into the calendar. Symptoms (cramps, tiredness, bloating, etc.)
