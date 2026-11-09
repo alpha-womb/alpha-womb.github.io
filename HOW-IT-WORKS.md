@@ -40,6 +40,11 @@ project `alpha-womb.github.io`). Only the app files are there, never your data.
 To update it: change the files here, change `VERSION` in `sw.js`, then save and upload with git.
 The phone picks up the new version the next time it opens the app with internet.
 
+## Advice on the Today screen
+Today shows boxes for the current phase: Hormonal changes, Food, Seeds, Exercise, Sleep (and Supplement in the luteal phase).
+The wording is Riyo's approved text from the advice doc (https://claude.ai/artifact/MUsx7TLLQmVBMitSiPkKEv), copied word for word
+into `ADVICE` and `SEEDS` near the top of the screens section in `index.html`. Change the doc first, then the app.
+Seeds switch from flax + pumpkin to sesame + sunflower once the luteal phase starts (about day 15).
+
 ## Still to come
-- Advice for each phase (food, seeds, exercise, sleep), researched and approved by you first.
 - Mood and symptom patterns, once there are a few cycles of entries.

@@ -78,6 +78,9 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 label{display:block;font-size:14px;color:var(--muted);margin:14px 0 6px}
 label.check{display:flex;gap:10px;align-items:center;color:var(--ink);font-size:15px}
 label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
+.abox{background:var(--card);border:1px solid var(--line);border-left:4px solid;border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.alabel{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
+.abox p{margin:4px 0;font-size:15px}
 .bcitem{padding:14px 0;border-top:1px solid var(--line)}
 .bcitem:first-child{border-top:0;padding-top:0}
 .ringbox{background:var(--teal-soft);border-radius:14px;padding:14px;margin-top:10px}
@@ -95,7 +98,7 @@ label.check input{width:22px;height:22px;accent-color:var(--rose);flex:none}
 <script>
 "use strict";
 /* ---------- storage: everything lives in this phone's browser storage ---------- */
-const APP_VERSION = 5;   // shown on the Me tab; keep in step with VERSION in sw.js
+const APP_VERSION = 6;   // shown on the Me tab; keep in step with VERSION in sw.js
 const KEY = 'alphawomb.v1';
 const empty = () => ({ version: 1, days: {}, bc: [] });
 function load() {
@@ -241,13 +244,41 @@ function renderNav() {
 function go(t) { tab = t; render(); window.scrollTo(0, 0); }
 function render() { renderNav(); app.innerHTML = ({ today, cal, hist, me })[tab](); }
 
-const PHASE_TEXT = {
-  Menstrual: 'Your period. Oestrogen and progesterone are at their lowest.',
-  Follicular: 'After your period. Oestrogen is rising as an egg matures.',
-  Ovulatory: 'Around your estimated ovulation.',
-  Luteal: 'After ovulation. Progesterone rises, then both hormones fall before your period.',
-  Late: 'Your period is later than your average cycle.'
+/* ---------- advice: Riyo's approved wording from the advice doc (9 Nov 2026), word for word ----------
+   https://claude.ai/artifact/MUsx7TLLQmVBMitSiPkKEv — change it there first, then here. */
+const FOLLICULAR_LIKE = {
+  food: ['A balanced vegetarian diet with protein at each meal (eggs, dairy, tofu, tempeh, pulses). Claims that particular foods “support oestrogen” in this phase haven’t been tested.'],
+  exercise: ['A good time for harder workouts or strength training if you feel up to it. A large 2020 review found performance differences between phases were trivial, and recommended going by your own response.'],
+  sleep: ['Sleep tends to be most settled in this phase. Keep regular sleep and wake times.']
 };
+const LUTEAL = {
+  hormones: ['Progesterone rises, then both hormones fall in the last few days before your period.'],
+  food: ['Get about 1,000–1,200 mg of calcium daily: dairy, fortified plant milk, sesame/tahini, kale.', 'Expect to be a little hungrier.'],
+  supplement: ['Magnesium + B6 (10mg)'],
+  exercise: ['Regular aerobic exercise (walking, swimming, running, cycling)'],
+  sleep: ['Sleep often lighter. Cool bedroom and steady sleep times.']
+};
+const ADVICE = {
+  Menstrual: {
+    hormones: ['Oestrogen and progesterone are at their lowest.'],
+    food: ['Iron-rich: lentils, chickpeas, beans, tofu, eggs, dark leafy greens, pumpkin seeds + vitamin C for absorption (peppers, citrus, berries).', 'Fresh ginger tea for cramps.'],
+    exercise: ['Gentle to moderate walking, yoga, swimming. Rest when you need to.', 'Performance may dip slightly.'],
+    sleep: ['Cramps can disturb sleep. Treating the pain (heat, ginger, painkillers) helps more than any phase-specific sleep rule.']
+  },
+  Follicular: { hormones: ['Oestrogen is rising: you may feel more energetic.'], ...FOLLICULAR_LIKE },
+  Ovulatory: { hormones: ['Oestrogen peaks and a surge of luteinising hormone (LH) releases an egg.', 'You may notice one-sided twinges or higher sex drive.'], ...FOLLICULAR_LIKE },
+  Luteal: LUTEAL,
+  Late: { ...LUTEAL, hormones: ['Your period is later than your average cycle.'] }
+};
+// Seed cycling: flax + pumpkin up to ovulation (days 1–14), sesame + sunflower after it.
+const SEEDS = { before: 'Seed cycling: 1 tablespoon each of flax and pumpkin.', after: 'Seed cycling: 1 tablespoon each of sesame and sunflower.' };
+const BOXES = [['hormones', 'Hormonal changes', 'var(--rose)'], ['food', 'Food', 'var(--amber)'], ['seeds', 'Seeds', 'var(--amber)'],
+  ['exercise', 'Exercise', 'var(--teal)'], ['sleep', 'Sleep', '#7A6FB0'], ['supplement', 'Supplement', 'var(--muted)']];
+function adviceBoxes(phase) {
+  const a = { ...ADVICE[phase], seeds: [phase === 'Luteal' || phase === 'Late' ? SEEDS.after : SEEDS.before] };
+  return BOXES.filter(([k]) => a[k]).map(([k, label, colour]) =>
+    `<div class="abox" style="border-left-color:${colour}"><div class="alabel" style="color:${colour}">${label}</div>${a[k].map(t => `<p>${esc(t)}</p>`).join('')}</div>`).join('');
+}
 
 function today() {
   const f = forecast(), t = todayN(), bcs = activeBC();
@@ -265,10 +296,9 @@ function today() {
   h += `<div class="card hero">
       <div class="muted small">${fmt(t, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
       <div class="big">Day ${f.cd}</div>
-      <span class="phase">${f.phase} phase</span>
-      <p class="small">${PHASE_TEXT[f.phase]}</p>
-      <p class="small muted">Food, seed, exercise and sleep suggestions for this phase will appear here once you’ve approved them.</p>
-    </div>`;
+      <span class="phase">${f.phase === 'Late' ? 'Period late' : f.phase + ' phase'}</span>
+    </div>
+    ${adviceBoxes(f.phase)}`;
   const nextTxt = f.late > 0 ? `${f.late} day${f.late > 1 ? 's' : ''} later than expected`
     : f.late === 0 ? 'Expected today' : `In about ${-f.late} days · ${fmt(f.next)}`;
   const ovTxt = f.ov >= t ? `Around ${fmt(f.ov)}` : 'Passed for this cycle';
